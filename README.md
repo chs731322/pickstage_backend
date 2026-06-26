@@ -133,7 +133,7 @@ cd pickstage_backend
 ## 📌 API 명세서
 
 > Notion에서 관리합니다.
-> [API 명세서 바로가기](https://app.notion.com/p/33a8e993af7280a1832ee005a148724d)
+> [API 명세서 바로가기](https://app.notion.com/p/API-3848e993af7280b0a1a0c447320ba629?source=copy_link)
 
 ### Base URL
 ```
