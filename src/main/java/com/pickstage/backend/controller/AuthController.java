@@ -14,7 +14,6 @@ import com.pickstage.backend.dto.SigninRequest;
 import com.pickstage.backend.dto.SignupRequest;
 import com.pickstage.backend.global.response.ApiResponse;
 import com.pickstage.backend.service.AuthService;
-import com.pickstage.backend.dto.ReissueRequest;
 
 @RestController
 @RequestMapping("/api/auth")
