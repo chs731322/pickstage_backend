@@ -1,2 +1,7 @@
 application-local.properties
 .DS_Store
+target/
+*.jar
+*.jar.original
+mvnw.cmd
+.mvn/
