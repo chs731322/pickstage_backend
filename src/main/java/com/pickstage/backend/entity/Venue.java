@@ -21,8 +21,6 @@ public class Venue {
     private BigDecimal latitude;
     private BigDecimal longitude;
     private int capacity;
-    private String viewInfo;
-    private String standingTip;
 
     @Column(columnDefinition = "json")
     private String facilities;
