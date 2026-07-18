@@ -18,13 +18,4 @@ public interface ConcertRepository extends JpaRepository<Concert, Long> {
             @Param("genre") String genre,
             @Param("keyword") String keyword,
             Pageable pageable);
-
-    // 지역 필터
-    Page<Concert> findByRegion(String region, Pageable pageable);
-
-    // 장르 필터
-    Page<Concert> findByGenre(String genre, Pageable pageable);
-
-    // 지역 + 장르 필터
-    Page<Concert> findByRegionAndGenre(String region, String genre, Pageable pageable);
 }
