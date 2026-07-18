@@ -33,6 +33,10 @@ public class ConcertService {
             default -> Sort.by(Sort.Direction.DESC, "createdAt");
         };
 
+        if (page < 0 || size <= 0) {
+            throw new IllegalArgumentException("잘못된 페이지 요청입니다.");
+        }
+        
         Pageable pageable = PageRequest.of(page, size, sorting);
 
         // 필터링 조회 후 DTO 변환

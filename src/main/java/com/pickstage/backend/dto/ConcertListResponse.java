@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import java.time.LocalDate;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 @Getter
 @Builder
@@ -19,6 +20,8 @@ public class ConcertListResponse {
     private LocalDate endDate;
     private String region;
     private String genre;
+
+    @Getter(onMethod_ = @__(@JsonProperty("isFestival")))
     private boolean isFestival;
     private String venueName;
     private int bookmarkCount;
