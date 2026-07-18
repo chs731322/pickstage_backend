@@ -1,6 +1,8 @@
 application-local.properties
+application.properties
 .DS_Store
 target/
+bin/
 *.jar
 *.jar.original
 mvnw.cmd
