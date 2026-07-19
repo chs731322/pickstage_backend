@@ -24,6 +24,10 @@ public class Festival {
     @Column(name = "venue_name")
     private String venueName;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "venue_id")
+    private Venue venue;
+
     private String address;
     private String region;
 
