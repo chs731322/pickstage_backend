@@ -28,7 +28,7 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.fail(e.getMessage()));
     }
 
-    // 타입이 맞지 않을 때 500 에러 발생
+    // 파라미터 타입이 맞지 않는 경우
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<ApiResponse<Void>> handleMethodArgumentTypeMismatch(
             MethodArgumentTypeMismatchException e) {

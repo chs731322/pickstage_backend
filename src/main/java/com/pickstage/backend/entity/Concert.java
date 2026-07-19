@@ -47,6 +47,9 @@ public class Concert {
 
     @Builder.Default
     private int viewCount = 0;
+    public void incrementViewCount() {
+        this.viewCount++;
+    }
 
     @Builder.Default
     private int bookmarkCount = 0;

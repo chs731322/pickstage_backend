@@ -34,9 +34,9 @@ public class ConcertService {
         };
 
         if (page < 0 || size <= 0) {
-            throw new IllegalArgumentException("잘못된 페이지 요청입니다.");
+            throw new IllegalArgumentException("올바르지 않은 요청입니다.");
         }
-        
+
         Pageable pageable = PageRequest.of(page, size, sorting);
 
         // 필터링 조회 후 DTO 변환
@@ -60,7 +60,9 @@ public class ConcertService {
     public ConcertDetailResponse getConcert(Long id) {
 
         Concert concert = concertRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 공연입니다."));
+                .orElseThrow(() -> new IllegalStateException("존재하지 않는 공연입니다."));
+
+        concert.incrementViewCount(); // 조회수 증가
 
         return ConcertDetailResponse.builder()
                 .id(concert.getId())

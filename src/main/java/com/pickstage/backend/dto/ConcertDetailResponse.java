@@ -8,6 +8,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 
 @Getter
 @Builder
@@ -23,11 +25,14 @@ public class ConcertDetailResponse {
     private LocalDate endDate;
     private String region;
     private String genre;
+
+    @Getter(onMethod_ = @__(@JsonProperty("isFestival")))
     private boolean isFestival;
     private String description;
     private LocalDateTime ticketOpenAt;
     private String ticketLink;
     private String externalUrl;
+
     private int viewCount;
     private int bookmarkCount;
 
