@@ -1,5 +1,6 @@
 package com.pickstage.backend.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -8,15 +9,12 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-
-
 @Getter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ConcertDetailResponse {
-    
+public class FestivalDetailResponse {
+
     private Long id;
     private String title;
     private String posterImage;
@@ -28,15 +26,14 @@ public class ConcertDetailResponse {
 
     @Getter(onMethod_ = @__(@JsonProperty("isFestival")))
     private boolean isFestival;
+
     private String description;
     private LocalDateTime ticketOpenAt;
     private String ticketLink;
     private String externalUrl;
-
     private int viewCount;
     private int bookmarkCount;
 
     private VenueInfo venue;
     private List<ArtistInfo> artists;
- 
 }
