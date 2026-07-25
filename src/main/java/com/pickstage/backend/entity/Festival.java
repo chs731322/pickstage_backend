@@ -62,4 +62,12 @@ public class Festival {
     public void incrementViewCount() {
         this.viewCount++;
     }
+
+    public void incrementBookmarkCount() {
+        this.bookmarkCount++;
+    }
+
+    public void decrementBookmarkCount() {
+        this.bookmarkCount--;
+    }
 }

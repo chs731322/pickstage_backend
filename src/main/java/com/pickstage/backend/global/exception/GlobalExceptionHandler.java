@@ -37,6 +37,15 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.fail("잘못된 요청입니다."));
     }
 
+    // 이미 북마크한 공연일 경우
+    @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
+    public ResponseEntity<ApiResponse<Void>> handleDataIntegrityViolation(
+            org.springframework.dao.DataIntegrityViolationException e) {
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(ApiResponse.fail("이미 북마크한 공연입니다."));
+    }
+
     // 그 외 모든 에러
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleException(Exception e) {
