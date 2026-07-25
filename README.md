@@ -150,9 +150,9 @@ Authorization: Bearer {accessToken}
 
 | 도메인 | Base Path | 담당 |
 |---|---|---|
-| 인증 | `/api/auth` | 해솔 |
-| 공연 | `/api/concerts` | 연서 |
-| 공연장 | `/api/venues` | 연서 |
-| 아티스트 | `/api/artists` | 연서 |
-| 찜 | `/api/bookmarks` | 연서 |
+| 인증 | `/api/auth` | 연서 |
+| 공연 | `/api/festivals` | 해솔 |
+| 공연장 | `/api/venues` | 해솔 |
+| 아티스트 | `/api/artists` | 해솔 |
+| 찜 | `/api/bookmarks` | 해솔 |
 | 후기 | `/api/reviews` | 연서 |
