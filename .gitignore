@@ -9,3 +9,6 @@ mvnw.cmd
 .mvn/
 postman/
 .postman/
+.settings/
+.classpath
+.project
