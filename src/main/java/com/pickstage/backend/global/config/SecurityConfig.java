@@ -15,9 +15,11 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
 	private final JwtProvider jwtProvider;
+	private final CustomAuthenticationEntryPoint customAuthenticationEntryPoint;
 
-	public SecurityConfig(JwtProvider jwtProvider) {
+	public SecurityConfig(JwtProvider jwtProvider, CustomAuthenticationEntryPoint customAuthenticationEntryPoint) {
 		this.jwtProvider = jwtProvider;
+		this.customAuthenticationEntryPoint = customAuthenticationEntryPoint;
 	}
 
 	@Bean
@@ -28,6 +30,9 @@ public class SecurityConfig {
 
 				// 세션 사용 안 함 (JWT 방식이라 STATELESS)
 				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+
+				// 인증 실패 시 응답 형식 커스터마이징
+				.exceptionHandling(ex -> ex.authenticationEntryPoint(customAuthenticationEntryPoint))
 
 				// URL별 접근 권한 설정
 				.authorizeHttpRequests(auth -> auth
