@@ -2,6 +2,7 @@ package com.pickstage.backend.global.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -37,9 +38,10 @@ public class SecurityConfig {
 				// URL별 접근 권한 설정
 				.authorizeHttpRequests(auth -> auth
 						// 인증 없이 접근 가능한 URL
-						.requestMatchers("/api/auth/**", "/api/festivals/**", "/api/venues/**", "/api/artists/**")
+						.requestMatchers("/api/auth/**").permitAll()
+						.requestMatchers(HttpMethod.GET, "/api/festivals/**", "/api/venues/**", "/api/artists/**")
 						.permitAll()
-						// 나머지는 로그인 필요
+						// 나머지는 로그인 필요 (관심 아티스트 추가/삭제 등 POST/DELETE 포함)
 						.anyRequest().authenticated())
 
 				// JWT 필터 등록

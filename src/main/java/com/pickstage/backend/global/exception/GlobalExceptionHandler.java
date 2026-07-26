@@ -37,13 +37,13 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.fail("잘못된 요청입니다."));
     }
 
-    // 이미 북마크한 공연일 경우
+    // 이미 존재하는 리소스를 중복 생성하려는 경우 (북마크, 관심 아티스트 등)
     @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
     public ResponseEntity<ApiResponse<Void>> handleDataIntegrityViolation(
             org.springframework.dao.DataIntegrityViolationException e) {
         return ResponseEntity
                 .status(HttpStatus.CONFLICT)
-                .body(ApiResponse.fail("이미 북마크한 공연입니다."));
+                .body(ApiResponse.fail(e.getMessage()));
     }
 
     // 그 외 모든 에러

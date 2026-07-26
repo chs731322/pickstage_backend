@@ -3,20 +3,23 @@ package com.pickstage.backend.controller;
 import com.pickstage.backend.dto.ArtistDetailResponse;
 import com.pickstage.backend.global.response.ApiResponse;
 import com.pickstage.backend.service.ArtistService;
+import com.pickstage.backend.service.InterestArtistService;
+
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/artists")
 public class ArtistController {
 
     private final ArtistService artistService;
+    private final InterestArtistService interestArtistService;
 
-    public ArtistController(ArtistService artistService) {
+    public ArtistController(ArtistService artistService, InterestArtistService interestArtistService) {
         this.artistService = artistService;
+        this.interestArtistService = interestArtistService;
     }
 
     // 아티스트 상세 조회
@@ -24,6 +27,23 @@ public class ArtistController {
     public ResponseEntity<ApiResponse<ArtistDetailResponse>> getArtist(@PathVariable Long id) {
 
         ArtistDetailResponse result = artistService.getArtist(id);
+
         return ResponseEntity.ok(ApiResponse.success(result));
+    }
+
+    // 관심 아티스트 추가
+    @PostMapping("/{artistId}")
+    public ResponseEntity<ApiResponse<Void>> addInterestArtist(
+            @PathVariable Long artistId, @AuthenticationPrincipal Long userId) {
+        interestArtistService.addInterestArtist(userId, artistId);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success("관심 아티스트가 추가되었습니다."));
+    }
+    
+    // 관심 아티스트 삭제
+    @DeleteMapping("/{artistId}")
+    public ResponseEntity<ApiResponse<Void>> removeInterestArtist(
+            @PathVariable Long artistId, @AuthenticationPrincipal Long userId) {
+        interestArtistService.deleteInterestArtist(userId, artistId);
+        return ResponseEntity.ok(ApiResponse.success("관심 아티스트가 삭제되었습니다."));
     }
 }
