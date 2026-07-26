@@ -47,7 +47,7 @@ public class BookmarkService {
     public void removeBookmark(Long userId, Long festivalId) {
         // 북마크가 존재하는지 확인
         if (!bookmarkRepository.existsByUserIdAndFestivalId(userId, festivalId)) {
-            throw new IllegalStateException("북마크가 존재하지 않습니다.");
+            throw new org.springframework.dao.DataIntegrityViolationException("북마크하지 않은 공연입니다.");
         }
 
         // 북마크 삭제
