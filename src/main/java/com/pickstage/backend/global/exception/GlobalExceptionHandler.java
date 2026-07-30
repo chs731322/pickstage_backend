@@ -1,6 +1,7 @@
 package com.pickstage.backend.global.exception;
 
 import com.pickstage.backend.global.response.ApiResponse;
+import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -39,6 +40,22 @@ public class GlobalExceptionHandler {
                 .flatMap(result -> result.getResolvableErrors().stream())
                 .findFirst()
                 .map(error -> error.getDefaultMessage())
+                .orElse("잘못된 요청입니다.");
+
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.fail(message));
+    }
+
+    // 요청 파라미터 유효성 검증에 실패한 경우
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<ApiResponse<Void>> handleConstraintViolation(
+            ConstraintViolationException e) {
+
+        String message = e.getConstraintViolations()
+                .stream()
+                .findFirst()
+                .map(violation -> violation.getMessage())
                 .orElse("잘못된 요청입니다.");
 
         return ResponseEntity
