@@ -31,6 +31,12 @@ public class AuthService {
         this.jwtProvider = jwtProvider;
         this.passwordEncoder = passwordEncoder;
     }
+    
+    // 이메일 중복 확인
+    @Transactional(readOnly = true)
+    public boolean isEmailAvailable(String email) {
+        return !userRepository.existsByEmail(email);
+    }
 
     // 회원가입
     @Transactional
