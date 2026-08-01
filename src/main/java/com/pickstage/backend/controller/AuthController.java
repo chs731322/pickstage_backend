@@ -18,6 +18,7 @@ import com.pickstage.backend.dto.SignupRequest;
 import com.pickstage.backend.global.response.ApiResponse;
 import com.pickstage.backend.service.AuthService;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 
@@ -56,13 +57,13 @@ public class AuthController {
     // 회원가입
     @PostMapping("/signup")
     public ResponseEntity<ApiResponse<AuthResponse>> signup(
-            @RequestBody SignupRequest request) {
+            @Valid @RequestBody SignupRequest request) {
 
         AuthResponse response = authService.signup(request);
 
-        return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(ApiResponse.success(response));
+        return ResponseEntity.ok(
+                ApiResponse.success(response)
+        );
     }
 
     // 로그인
