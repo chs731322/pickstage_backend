@@ -32,7 +32,13 @@ public class SecurityConfig {
 				// URL별 접근 권한 설정
 				.authorizeHttpRequests(auth -> auth
 						// 인증 없이 접근 가능한 URL
-						.requestMatchers("/api/auth/**", "/api/festivals/**", "/api/venues/**", "/api/artists/**")
+						.requestMatchers(
+								"/api/auth/**",
+								"/api/users/check-nickname",
+								"/api/festivals/**",
+								"/api/venues/**",
+								"/api/artists/**"
+						)
 						.permitAll()
 						// 나머지는 로그인 필요
 						.anyRequest().authenticated())

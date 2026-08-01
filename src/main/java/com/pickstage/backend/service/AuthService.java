@@ -31,11 +31,17 @@ public class AuthService {
         this.jwtProvider = jwtProvider;
         this.passwordEncoder = passwordEncoder;
     }
-    
+
     // 이메일 중복 확인
     @Transactional(readOnly = true)
     public boolean isEmailAvailable(String email) {
         return !userRepository.existsByEmail(email);
+    }
+
+    // 닉네임 중복 확인
+    @Transactional(readOnly = true)
+    public boolean isNicknameAvailable(String nickname) {
+        return !userRepository.existsByNickname(nickname);
     }
 
     // 회원가입
