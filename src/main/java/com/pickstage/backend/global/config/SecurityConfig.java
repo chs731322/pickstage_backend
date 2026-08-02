@@ -38,7 +38,7 @@ public class SecurityConfig {
 				// URL별 접근 권한 설정
 				.authorizeHttpRequests(auth -> auth
 						// 인증 없이 접근 가능한 URL
-						.requestMatchers("/api/auth/**").permitAll()
+						.requestMatchers("/api/auth/**", "/api/users/check-nickname").permitAll()
 						.requestMatchers(HttpMethod.GET, "/api/festivals/**", "/api/venues/**", "/api/artists/**")
 						.permitAll()
 						// 나머지는 로그인 필요 (관심 아티스트 추가/삭제 등 POST/DELETE 포함)
