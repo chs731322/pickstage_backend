@@ -30,6 +30,7 @@ public class VenueService {
     private final FestivalRepository festivalRepository;
     private final VenueReviewRepository venueReviewRepository;
     private final UserRepository userRepository;
+    
     public VenueService(VenueRepository venueRepository, VenueImageRepository venueImageRepository,
             FestivalRepository festivalRepository, VenueReviewRepository venueReviewRepository,
             UserRepository userRepository) {
