@@ -27,4 +27,8 @@ public interface FestivalRepository extends JpaRepository<Festival, Long> {
 
         // 해당 공연장에서 예정된 페스티벌
         List<Festival> findByVenueIdAndStartDateGreaterThanEqual(Long venueId, LocalDate today);
+
+        @Query("SELECT f FROM Festival f WHERE f.startDate <= :endOfMonth AND f.endDate >= :startOfMonth")
+        List<Festival> findByDateRange(@Param("startOfMonth") LocalDate startOfMonth,
+                        @Param("endOfMonth") LocalDate endOfMonth);
 }
