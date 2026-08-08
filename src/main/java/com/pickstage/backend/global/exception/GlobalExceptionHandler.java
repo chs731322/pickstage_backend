@@ -21,11 +21,23 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<Void>> handleIllegalArgument(
             IllegalArgumentException e) {
 
+        // 이메일 또는 닉네임 중복
         if ("이미 가입된 이메일입니다.".equals(e.getMessage())
                 || "이미 사용 중인 닉네임입니다.".equals(e.getMessage())) {
 
             return ResponseEntity
                     .status(HttpStatus.CONFLICT)
+                    .body(ApiResponse.fail(e.getMessage()));
+        }
+
+        // 토큰 인증 실패
+        if ("리프레시 토큰이 만료되었습니다. 다시 로그인하세요."
+                .equals(e.getMessage())
+                || "유효하지 않은 토큰입니다."
+                .equals(e.getMessage())) {
+
+            return ResponseEntity
+                    .status(HttpStatus.UNAUTHORIZED)
                     .body(ApiResponse.fail(e.getMessage()));
         }
 

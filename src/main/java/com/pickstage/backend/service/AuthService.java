@@ -1,6 +1,7 @@
 package com.pickstage.backend.service;
 
 import com.pickstage.backend.dto.AuthResponse;
+import com.pickstage.backend.dto.ReissueResponse;
 import com.pickstage.backend.dto.SigninRequest;
 import com.pickstage.backend.dto.SignupRequest;
 import com.pickstage.backend.entity.RefreshToken;
@@ -113,10 +114,20 @@ public class AuthService {
 
     // 토큰 재발급
     @Transactional
-    public AuthResponse reissue(String refreshToken) {
+    public ReissueResponse reissue(String refreshToken) {
 
+        // Refresh Token 만료 여부 확인
+        if (jwtProvider.isExpired(refreshToken)) {
+            throw new IllegalArgumentException(
+                    "리프레시 토큰이 만료되었습니다. 다시 로그인하세요."
+            );
+        }
+
+        // Refresh Token 유효성 확인
         if (!jwtProvider.validateToken(refreshToken)) {
-            throw new IllegalArgumentException("유효하지 않은 토큰입니다.");
+            throw new IllegalArgumentException(
+                    "유효하지 않은 토큰입니다."
+            );
         }
 
         Long userId = jwtProvider.getUserId(refreshToken);
@@ -124,7 +135,7 @@ public class AuthService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() ->
                         new IllegalArgumentException(
-                                "유저를 찾을 수 없습니다."
+                                "유효하지 않은 토큰입니다."
                         )
                 );
 
@@ -132,17 +143,47 @@ public class AuthService {
                 refreshTokenRepository.findByUserId(userId)
                         .orElseThrow(() ->
                                 new IllegalArgumentException(
-                                        "로그인이 필요합니다."
+                                        "유효하지 않은 토큰입니다."
                                 )
                         );
 
+        // DB에 저장된 Refresh Token과 비교
         if (!savedToken.getToken().equals(refreshToken)) {
             throw new IllegalArgumentException(
                     "유효하지 않은 토큰입니다."
             );
         }
 
-        return generateTokens(user);
+        // 새로운 Access Token 생성
+        String newAccessToken =
+                jwtProvider.generateAccessToken(
+                        user.getId(),
+                        user.getRole().name()
+                );
+
+        // 새로운 Refresh Token 생성
+        String newRefreshToken =
+                jwtProvider.generateRefreshToken(
+                        user.getId()
+                );
+
+        // 기존 Refresh Token 삭제
+        refreshTokenRepository.delete(savedToken);
+
+        // 새로운 Refresh Token 저장
+        RefreshToken newToken = RefreshToken.builder()
+                .user(user)
+                .token(newRefreshToken)
+                .expiredAt(LocalDateTime.now().plusDays(14))
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        refreshTokenRepository.save(newToken);
+
+        return ReissueResponse.builder()
+                .accessToken(newAccessToken)
+                .refreshToken(newRefreshToken)
+                .build();
     }
 
     // 토큰 발급 공통 메서드
