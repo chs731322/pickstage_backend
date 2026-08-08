@@ -104,7 +104,7 @@ public class AuthController {
     // 로그인
     @PostMapping("/signin")
     public ResponseEntity<ApiResponse<AuthResponse>> signin(
-            @RequestBody SigninRequest request) {
+            @Valid @RequestBody SigninRequest request) {
 
         AuthResponse response = authService.signin(request);
 
