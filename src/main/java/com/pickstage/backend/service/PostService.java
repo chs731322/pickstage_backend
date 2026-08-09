@@ -17,18 +17,21 @@ import com.pickstage.backend.entity.Post;
 import com.pickstage.backend.repository.FestivalRepository;
 import com.pickstage.backend.repository.PostRepository;
 import com.pickstage.backend.repository.UserRepository;
+import com.pickstage.backend.repository.CommentRepository;
+import com.pickstage.backend.dto.CommentResponse;
 
 @Service
 public class PostService {
     private final PostRepository postRepository;
     private final FestivalRepository festivalRepository;
     private final UserRepository userRepository;
+    private final CommentRepository commentRepository;
 
-    public PostService(PostRepository postRepository, FestivalRepository festivalRepository,
-            UserRepository userRepository) {
+    public PostService(PostRepository postRepository, FestivalRepository festivalRepository, UserRepository userRepository, CommentRepository commentRepository) {
         this.postRepository = postRepository;
         this.festivalRepository = festivalRepository;
         this.userRepository = userRepository;
+        this.commentRepository = commentRepository;
     }
 
     // 게시글 목록 조회
@@ -67,7 +70,15 @@ public class PostService {
                 .viewCount(post.getViewCount())
                 .createdAt(post.getCreatedAt())
                 .updatedAt(post.getUpdatedAt())
-                .comments(Collections.emptyList())
+                .comments(commentRepository.findByPostIdAndDeletedAtIsNullOrderByCreatedAtAsc(postId).stream()
+                        .map(comment -> CommentResponse.builder()
+                                .id(comment.getId())
+                                .parentId(comment.getParentId())
+                                .content(comment.getContent())
+                                .authorNickname(getNickname(comment.getUserId()))
+                                .createdAt(comment.getCreatedAt())
+                                .build())
+                        .toList())
                 .build();
     }
 

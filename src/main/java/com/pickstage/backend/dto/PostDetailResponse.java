@@ -19,17 +19,5 @@ public class PostDetailResponse {
     private int viewCount;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
-    private List<CommentInfo> comments;
-
-    @Getter
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class CommentInfo {
-        private Long id;
-        private Long parentId;
-        private String content;
-        private String authorNickname;
-        private LocalDateTime createdAt;
-    }
+    private List<CommentResponse> comments;
 }
