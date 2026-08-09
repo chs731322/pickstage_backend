@@ -40,6 +40,12 @@ public class User {
     private LocalDateTime updatedAt;
     private LocalDateTime deletedAt;
 
+    // 비밀번호 변경
+    public void updatePassword(String passwordHash) {
+        this.passwordHash = passwordHash;
+        this.updatedAt = LocalDateTime.now();
+    }
+
     public enum SocialProvider {
         none, kakao, google, naver
     }
