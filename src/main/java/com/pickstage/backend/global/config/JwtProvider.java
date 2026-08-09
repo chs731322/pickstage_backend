@@ -1,6 +1,9 @@
 package com.pickstage.backend.global.config;
 
-import io.jsonwebtoken.*;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.JwtException;
+import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -21,57 +24,111 @@ public class JwtProvider {
             @Value("${jwt.access-expiration}") long accessExpiration,
             @Value("${jwt.refresh-expiration}") long refreshExpiration
     ) {
-        this.secretKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+        this.secretKey =
+                Keys.hmacShaKeyFor(
+                        secret.getBytes(StandardCharsets.UTF_8)
+                );
+
         this.accessExpiration = accessExpiration;
         this.refreshExpiration = refreshExpiration;
     }
 
     // Access Token 생성
-    public String generateAccessToken(Long userId, String role) {
+    public String generateAccessToken(
+            Long userId,
+            String role) {
+
         return Jwts.builder()
                 .subject(String.valueOf(userId))
                 .claim("role", role)
                 .issuedAt(new Date())
-                .expiration(new Date(System.currentTimeMillis() + accessExpiration))
+                .expiration(
+                        new Date(
+                                System.currentTimeMillis()
+                                        + accessExpiration
+                        )
+                )
                 .signWith(secretKey)
                 .compact();
     }
 
     // Refresh Token 생성
     public String generateRefreshToken(Long userId) {
+
         return Jwts.builder()
                 .subject(String.valueOf(userId))
                 .issuedAt(new Date())
-                .expiration(new Date(System.currentTimeMillis() + refreshExpiration))
+                .expiration(
+                        new Date(
+                                System.currentTimeMillis()
+                                        + refreshExpiration
+                        )
+                )
                 .signWith(secretKey)
                 .compact();
     }
 
     // 토큰에서 userId 추출
     public Long getUserId(String token) {
-        return Long.parseLong(getClaims(token).getSubject());
+
+        return Long.parseLong(
+                getClaims(token).getSubject()
+        );
     }
 
     // 토큰에서 role 추출
     public String getRole(String token) {
-        return getClaims(token).get("role", String.class);
+
+        return getClaims(token)
+                .get("role", String.class);
     }
 
     // 토큰 유효성 검증
     public boolean validateToken(String token) {
+
         try {
             getClaims(token);
             return true;
+
         } catch (ExpiredJwtException e) {
-        	System.out.println("만료된 토큰: " + e.getMessage());
+
+            System.out.println(
+                    "만료된 토큰: "
+                            + e.getMessage()
+            );
+
         } catch (JwtException e) {
-        	System.out.println("유효하지 않은 토큰: " + e.getMessage());
+
+            System.out.println(
+                    "유효하지 않은 토큰: "
+                            + e.getMessage()
+            );
         }
+
         return false;
+    }
+
+    // 토큰 만료 여부 확인
+    public boolean isExpired(String token) {
+
+        try {
+
+            getClaims(token);
+            return false;
+
+        } catch (ExpiredJwtException e) {
+
+            return true;
+
+        } catch (JwtException e) {
+
+            return false;
+        }
     }
 
     // Claims 파싱
     private Claims getClaims(String token) {
+
         return Jwts.parser()
                 .verifyWith(secretKey)
                 .build()

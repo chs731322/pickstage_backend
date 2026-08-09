@@ -15,6 +15,7 @@ import com.pickstage.backend.dto.AuthResponse;
 import com.pickstage.backend.dto.EmailSendRequest;
 import com.pickstage.backend.dto.EmailVerifyRequest;
 import com.pickstage.backend.dto.ReissueRequest;
+import com.pickstage.backend.dto.ReissueResponse;
 import com.pickstage.backend.dto.SigninRequest;
 import com.pickstage.backend.dto.SignupRequest;
 import com.pickstage.backend.global.response.ApiResponse;
@@ -104,7 +105,7 @@ public class AuthController {
     // 로그인
     @PostMapping("/signin")
     public ResponseEntity<ApiResponse<AuthResponse>> signin(
-            @RequestBody SigninRequest request) {
+            @Valid @RequestBody SigninRequest request) {
 
         AuthResponse response = authService.signin(request);
 
@@ -127,10 +128,10 @@ public class AuthController {
 
     // 토큰 재발급
     @PostMapping("/reissue")
-    public ResponseEntity<ApiResponse<AuthResponse>> reissue(
-            @RequestBody ReissueRequest request) {
+    public ResponseEntity<ApiResponse<ReissueResponse>> reissue(
+            @Valid @RequestBody ReissueRequest request) {
 
-        AuthResponse response =
+        ReissueResponse response =
                 authService.reissue(request.getRefreshToken());
 
         return ResponseEntity.ok(

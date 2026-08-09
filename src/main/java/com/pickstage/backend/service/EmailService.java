@@ -34,7 +34,8 @@ public class EmailService {
             UserRepository userRepository) {
 
         this.mailSender = mailSender;
-        this.emailVerificationRepository = emailVerificationRepository;
+        this.emailVerificationRepository =
+                emailVerificationRepository;
         this.userRepository = userRepository;
     }
 
@@ -43,28 +44,38 @@ public class EmailService {
     public void sendVerificationCode(String email) {
 
         if (userRepository.existsByEmail(email)) {
-            throw new IllegalArgumentException("이미 가입된 이메일입니다.");
+            throw new IllegalArgumentException(
+                    "이미 가입된 이메일입니다."
+            );
         }
 
         String verifyCode = generateVerificationCode();
 
-        LocalDateTime expiredAt = LocalDateTime.now()
-                .plusMinutes(VERIFICATION_EXPIRATION_MINUTES);
+        LocalDateTime expiredAt =
+                LocalDateTime.now()
+                        .plusMinutes(
+                                VERIFICATION_EXPIRATION_MINUTES
+                        );
 
         sendEmail(email, verifyCode);
 
         EmailVerification verification =
-                emailVerificationRepository.findByEmail(email)
+                emailVerificationRepository
+                        .findByEmail(email)
                         .orElse(null);
 
         if (verification == null) {
-            verification = EmailVerification.builder()
-                    .email(email)
-                    .verifyCode(verifyCode)
-                    .expiredAt(expiredAt)
-                    .verified(false)
-                    .build();
+
+            verification =
+                    EmailVerification.builder()
+                            .email(email)
+                            .verifyCode(verifyCode)
+                            .expiredAt(expiredAt)
+                            .verified(false)
+                            .build();
+
         } else {
+
             verification.updateVerificationCode(
                     verifyCode,
                     expiredAt
@@ -76,10 +87,13 @@ public class EmailService {
 
     // 이메일 인증코드 검증
     @Transactional
-    public void verifyEmail(String email, String verifyCode) {
+    public void verifyEmail(
+            String email,
+            String verifyCode) {
 
         EmailVerification verification =
-                emailVerificationRepository.findByEmail(email)
+                emailVerificationRepository
+                        .findByEmail(email)
                         .orElseThrow(() ->
                                 new IllegalArgumentException(
                                         "인증코드가 틀렸습니다."
@@ -92,7 +106,10 @@ public class EmailService {
             );
         }
 
-        if (!verification.getVerifyCode().equals(verifyCode)) {
+        if (!verification
+                .getVerifyCode()
+                .equals(verifyCode)) {
+
             throw new IllegalArgumentException(
                     "인증코드가 틀렸습니다."
             );
@@ -105,29 +122,46 @@ public class EmailService {
     @Transactional(readOnly = true)
     public boolean isEmailVerified(String email) {
 
-        return emailVerificationRepository.findByEmail(email)
+        return emailVerificationRepository
+                .findByEmail(email)
                 .map(EmailVerification::isVerified)
                 .orElse(false);
+    }
+
+    // 회원가입 완료 후 이메일 인증정보 삭제
+    @Transactional
+    public void deleteVerification(String email) {
+        emailVerificationRepository.deleteByEmail(email);
     }
 
     // 6자리 인증코드 생성
     private String generateVerificationCode() {
 
-        int number = secureRandom.nextInt(
-                VERIFICATION_CODE_BOUND
-        );
+        int number =
+                secureRandom.nextInt(
+                        VERIFICATION_CODE_BOUND
+                );
 
-        return String.format("%06d", number);
+        return String.format(
+                "%06d",
+                number
+        );
     }
 
     // 인증코드 이메일 발송
-    private void sendEmail(String email, String verifyCode) {
+    private void sendEmail(
+            String email,
+            String verifyCode) {
 
-        SimpleMailMessage message = new SimpleMailMessage();
+        SimpleMailMessage message =
+                new SimpleMailMessage();
 
         message.setFrom(senderEmail);
         message.setTo(email);
-        message.setSubject("[PickStage] 이메일 인증코드 안내");
+        message.setSubject(
+                "[PickStage] 이메일 인증코드 안내"
+        );
+
         message.setText(
                 "PickStage 이메일 인증코드는 "
                         + verifyCode
