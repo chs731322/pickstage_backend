@@ -1,5 +1,7 @@
 package com.pickstage.backend.dto;
 
+import java.util.List;
+
 import lombok.*;
 
 @Getter
@@ -12,4 +14,5 @@ public class PostCreateRequest {
     private String category;
     private String title;
     private String content;
+    List<String> images;
 }

@@ -10,6 +10,8 @@ import com.pickstage.backend.dto.VenueReviewInfo;
 import com.pickstage.backend.dto.VenueUpcomingConcertInfo;
 import com.pickstage.backend.repository.FestivalRepository;
 import com.pickstage.backend.repository.VenueReviewRepository;
+import com.pickstage.backend.repository.ReviewImageRepository;
+import com.pickstage.backend.entity.ReviewImage;
 
 @Service
 public class VenueService {
@@ -30,15 +32,17 @@ public class VenueService {
     private final FestivalRepository festivalRepository;
     private final VenueReviewRepository venueReviewRepository;
     private final UserRepository userRepository;
-    
+    private final ReviewImageRepository reviewImageRepository;
+
     public VenueService(VenueRepository venueRepository, VenueImageRepository venueImageRepository,
             FestivalRepository festivalRepository, VenueReviewRepository venueReviewRepository,
-            UserRepository userRepository) {
+            UserRepository userRepository, ReviewImageRepository reviewImageRepository) {
         this.venueRepository = venueRepository;
         this.venueImageRepository = venueImageRepository;
         this.festivalRepository = festivalRepository;
         this.venueReviewRepository = venueReviewRepository;
         this.userRepository = userRepository;
+        this.reviewImageRepository = reviewImageRepository;
     }
 
     // 공연장 상세 조회
@@ -72,6 +76,9 @@ public class VenueService {
                         .standingTip(review.getStandingTip())
                         .seatSection(review.getSeatSection())
                         .createdAt(review.getCreatedAt())
+                        .images(reviewImageRepository.findByReviewIdOrderBySortOrderAsc(review.getId()).stream()
+                                .map(ReviewImage::getImageUrl)
+                                .toList())
                         .build())
                 .toList();
         return VenueDetailResponse.builder()

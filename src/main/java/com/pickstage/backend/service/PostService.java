@@ -14,11 +14,13 @@ import com.pickstage.backend.dto.PostDetailResponse;
 import com.pickstage.backend.dto.PostListResponse;
 import com.pickstage.backend.dto.PostUpdateRequest;
 import com.pickstage.backend.entity.Post;
+import com.pickstage.backend.entity.PostImage;
 import com.pickstage.backend.repository.FestivalRepository;
 import com.pickstage.backend.repository.PostRepository;
 import com.pickstage.backend.repository.UserRepository;
 import com.pickstage.backend.repository.CommentRepository;
 import com.pickstage.backend.dto.CommentResponse;
+import com.pickstage.backend.repository.PostImageRepository;
 
 @Service
 public class PostService {
@@ -26,12 +28,14 @@ public class PostService {
     private final FestivalRepository festivalRepository;
     private final UserRepository userRepository;
     private final CommentRepository commentRepository;
+    private final PostImageRepository postImageRepository;
 
-    public PostService(PostRepository postRepository, FestivalRepository festivalRepository, UserRepository userRepository, CommentRepository commentRepository) {
+    public PostService(PostRepository postRepository, FestivalRepository festivalRepository, UserRepository userRepository, CommentRepository commentRepository, PostImageRepository postImageRepository) {
         this.postRepository = postRepository;
         this.festivalRepository = festivalRepository;
         this.userRepository = userRepository;
         this.commentRepository = commentRepository;
+        this.postImageRepository = postImageRepository;
     }
 
     // 게시글 목록 조회
@@ -79,6 +83,9 @@ public class PostService {
                                 .createdAt(comment.getCreatedAt())
                                 .build())
                         .toList())
+                .images(postImageRepository.findByPostIdOrderBySortOrderAsc(postId).stream()
+                        .map(PostImage::getImageUrl)
+                        .toList())
                 .build();
     }
 
@@ -100,6 +107,14 @@ public class PostService {
                 .build();
 
         postRepository.save(post);
+
+        if (request.getImages() != null) {
+            for (int i = 0; i < request.getImages().size(); i++) {
+                String url = request.getImages().get(i);
+                PostImage postImage = new PostImage(null, post.getId(), url, i);
+                postImageRepository.save(postImage);
+            }
+        }
     }
 
     // 게시글 수정
@@ -114,6 +129,15 @@ public class PostService {
             post.setContent(request.getContent());
         }
         postRepository.save(post);
+
+        if (request.getImages() != null) {
+            postImageRepository.deleteByPostId(postId);
+            for (int i = 0; i < request.getImages().size(); i++) {
+                String url = request.getImages().get(i);
+                PostImage postImage = new PostImage(null, postId, url, i);
+                postImageRepository.save(postImage);
+            }
+        }
     }
 
     // 게시글 삭제
