@@ -5,6 +5,7 @@ import java.util.Map;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -87,6 +88,20 @@ public class UserController {
         return ResponseEntity.ok(
                 ApiResponse.success(
                         "비밀번호가 변경되었습니다."
+                )
+        );
+    }
+
+    // 회원 탈퇴
+    @DeleteMapping("/mypage")
+    public ResponseEntity<ApiResponse<Void>> withdraw(
+            @AuthenticationPrincipal Long userId) {
+
+        userService.withdraw(userId);
+
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        "회원 탈퇴가 완료되었습니다."
                 )
         );
     }

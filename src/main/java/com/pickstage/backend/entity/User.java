@@ -46,6 +46,12 @@ public class User {
         this.updatedAt = LocalDateTime.now();
     }
 
+    // 회원 탈퇴
+    public void withdraw() {
+        this.deletedAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
+    }
+
     public enum SocialProvider {
         none, kakao, google, naver
     }

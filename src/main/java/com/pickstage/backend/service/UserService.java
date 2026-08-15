@@ -3,6 +3,7 @@ package com.pickstage.backend.service;
 import com.pickstage.backend.dto.MyPageResponse;
 import com.pickstage.backend.dto.PasswordChangeRequest;
 import com.pickstage.backend.entity.User;
+import com.pickstage.backend.repository.RefreshTokenRepository;
 import com.pickstage.backend.repository.UserRepository;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -13,13 +14,16 @@ import org.springframework.transaction.annotation.Transactional;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordEncoder passwordEncoder;
 
     public UserService(
             UserRepository userRepository,
+            RefreshTokenRepository refreshTokenRepository,
             PasswordEncoder passwordEncoder) {
 
         this.userRepository = userRepository;
+        this.refreshTokenRepository = refreshTokenRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -84,5 +88,23 @@ public class UserService {
 
         // 비밀번호 변경
         user.updatePassword(encodedPassword);
+    }
+
+    // 회원 탈퇴
+    @Transactional
+    public void withdraw(Long userId) {
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() ->
+                        new IllegalStateException(
+                                "사용자를 찾을 수 없습니다."
+                        )
+                );
+
+        // 소프트 삭제 처리
+        user.withdraw();
+
+        // Refresh Token 삭제
+        refreshTokenRepository.deleteByUserId(userId);
     }
 }

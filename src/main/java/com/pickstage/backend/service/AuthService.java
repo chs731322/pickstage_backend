@@ -103,6 +103,13 @@ public class AuthService {
                         )
                 );
 
+        // 탈퇴한 사용자는 로그인 불가
+        if (user.getDeletedAt() != null) {
+            throw new IllegalArgumentException(
+                    "이메일 또는 비밀번호가 일치하지 않습니다."
+            );
+        }
+
         if (!passwordEncoder.matches(
                 request.getPassword(),
                 user.getPasswordHash())) {
@@ -147,6 +154,13 @@ public class AuthService {
                                 "유효하지 않은 토큰입니다."
                         )
                 );
+
+        // 탈퇴한 사용자는 토큰 재발급 불가
+        if (user.getDeletedAt() != null) {
+            throw new IllegalArgumentException(
+                    "유효하지 않은 토큰입니다."
+            );
+        }
 
         RefreshToken savedToken =
                 refreshTokenRepository.findByUserId(userId)
