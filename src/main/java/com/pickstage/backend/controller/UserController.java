@@ -6,15 +6,19 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.pickstage.backend.dto.MyPageResponse;
+import com.pickstage.backend.dto.PasswordChangeRequest;
 import com.pickstage.backend.global.response.ApiResponse;
 import com.pickstage.backend.service.AuthService;
 import com.pickstage.backend.service.UserService;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 
 @Validated
@@ -66,6 +70,24 @@ public class UserController {
 
         return ResponseEntity.ok(
                 ApiResponse.success(response)
+        );
+    }
+
+    // 비밀번호 변경
+    @PatchMapping("/mypage/password")
+    public ResponseEntity<ApiResponse<Void>> changePassword(
+            @AuthenticationPrincipal Long userId,
+            @Valid @RequestBody PasswordChangeRequest request) {
+
+        userService.changePassword(
+                userId,
+                request
+        );
+
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        "비밀번호가 변경되었습니다."
+                )
         );
     }
 }
