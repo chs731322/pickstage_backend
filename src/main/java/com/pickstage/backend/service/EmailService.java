@@ -28,6 +28,9 @@ public class EmailService {
     @Value("${spring.mail.username}")
     private String senderEmail;
 
+    @Value("${app.frontend-url:http://localhost:3000}")
+    private String frontendUrl;
+
     public EmailService(
             JavaMailSender mailSender,
             EmailVerificationRepository emailVerificationRepository,
@@ -132,6 +135,35 @@ public class EmailService {
     @Transactional
     public void deleteVerification(String email) {
         emailVerificationRepository.deleteByEmail(email);
+    }
+
+    // 비밀번호 재설정 이메일 발송
+    public void sendPasswordResetEmail(
+            String email,
+            String resetToken) {
+
+        String resetLink =
+                frontendUrl
+                        + "/reset-password?token="
+                        + resetToken;
+
+        SimpleMailMessage message =
+                new SimpleMailMessage();
+
+        message.setFrom(senderEmail);
+        message.setTo(email);
+        message.setSubject(
+                "[PickStage] 비밀번호 재설정 안내"
+        );
+
+        message.setText(
+                "아래 링크를 통해 비밀번호를 재설정해주세요.\n\n"
+                        + resetLink
+                        + "\n\n"
+                        + "해당 링크는 30분 동안 유효합니다."
+        );
+
+        mailSender.send(message);
     }
 
     // 6자리 인증코드 생성

@@ -30,7 +30,7 @@ public class GlobalExceptionHandler {
                     .body(ApiResponse.fail(e.getMessage()));
         }
 
-        // 토큰 인증 실패
+        // Refresh Token 인증 실패
         if ("리프레시 토큰이 만료되었습니다. 다시 로그인하세요."
                 .equals(e.getMessage())
                 || "유효하지 않은 토큰입니다."
@@ -39,6 +39,15 @@ public class GlobalExceptionHandler {
             return ResponseEntity
                     .status(HttpStatus.UNAUTHORIZED)
                     .body(ApiResponse.fail(e.getMessage()));
+        }
+
+        // 비밀번호 재설정 토큰이 유효하지 않은 경우
+        if ("비밀번호 재설정 토큰이 유효하지 않습니다."
+                .equals(e.getMessage())) {
+
+            return ResponseEntity
+                    .status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.fail("유효하지 않은 토큰입니다."));
         }
 
         return ResponseEntity

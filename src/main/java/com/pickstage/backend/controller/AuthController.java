@@ -14,6 +14,8 @@ import org.springframework.web.bind.annotation.RestController;
 import com.pickstage.backend.dto.AuthResponse;
 import com.pickstage.backend.dto.EmailSendRequest;
 import com.pickstage.backend.dto.EmailVerifyRequest;
+import com.pickstage.backend.dto.PasswordResetEmailRequest;
+import com.pickstage.backend.dto.PasswordResetRequest;
 import com.pickstage.backend.dto.ReissueRequest;
 import com.pickstage.backend.dto.ReissueResponse;
 import com.pickstage.backend.dto.SigninRequest;
@@ -136,6 +138,36 @@ public class AuthController {
 
         return ResponseEntity.ok(
                 ApiResponse.success(response)
+        );
+    }
+
+    // 비밀번호 재설정 이메일 발송
+    @PostMapping("/password/reset-email")
+    public ResponseEntity<ApiResponse<Void>> sendPasswordResetEmail(
+            @Valid @RequestBody PasswordResetEmailRequest request) {
+
+        authService.sendPasswordResetEmail(
+                request.getEmail()
+        );
+
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        "비밀번호 재설정 이메일이 발송되었습니다."
+                )
+        );
+    }
+
+    // 비밀번호 재설정
+    @PostMapping("/password/reset")
+    public ResponseEntity<ApiResponse<Void>> resetPassword(
+            @Valid @RequestBody PasswordResetRequest request) {
+
+        authService.resetPassword(request);
+
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        "비밀번호가 재설정되었습니다."
+                )
         );
     }
 }
