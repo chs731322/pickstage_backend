@@ -3,14 +3,17 @@ package com.pickstage.backend.controller;
 import java.util.Map;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.pickstage.backend.dto.MyPageResponse;
 import com.pickstage.backend.global.response.ApiResponse;
 import com.pickstage.backend.service.AuthService;
+import com.pickstage.backend.service.UserService;
 
 import jakarta.validation.constraints.NotBlank;
 
@@ -20,9 +23,14 @@ import jakarta.validation.constraints.NotBlank;
 public class UserController {
 
     private final AuthService authService;
+    private final UserService userService;
 
-    public UserController(AuthService authService) {
+    public UserController(
+            AuthService authService,
+            UserService userService) {
+
         this.authService = authService;
+        this.userService = userService;
     }
 
     // 닉네임 중복 확인
@@ -32,7 +40,8 @@ public class UserController {
             @NotBlank(message = "닉네임을 입력해주세요.")
             String nickname) {
 
-        boolean available = authService.isNicknameAvailable(nickname);
+        boolean available =
+                authService.isNicknameAvailable(nickname);
 
         Map<String, Boolean> data = Map.of(
                 "available", available
@@ -44,6 +53,19 @@ public class UserController {
 
         return ResponseEntity.ok(
                 ApiResponse.success(data, message)
+        );
+    }
+
+    // 내 정보 조회
+    @GetMapping("/mypage")
+    public ResponseEntity<ApiResponse<MyPageResponse>> getMyPage(
+            @AuthenticationPrincipal Long userId) {
+
+        MyPageResponse response =
+                userService.getMyPage(userId);
+
+        return ResponseEntity.ok(
+                ApiResponse.success(response)
         );
     }
 }
