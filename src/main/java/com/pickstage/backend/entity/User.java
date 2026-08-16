@@ -46,6 +46,22 @@ public class User {
         this.updatedAt = LocalDateTime.now();
     }
 
+    // 내 정보 수정
+    public void updateProfile(
+            String nickname,
+            String profileImage) {
+
+        if (nickname != null) {
+            this.nickname = nickname;
+        }
+
+        if (profileImage != null) {
+            this.profileImage = profileImage;
+        }
+
+        this.updatedAt = LocalDateTime.now();
+    }
+
     // 회원 탈퇴
     public void withdraw() {
         this.deletedAt = LocalDateTime.now();

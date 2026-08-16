@@ -1,6 +1,7 @@
 package com.pickstage.backend.service;
 
 import com.pickstage.backend.dto.MyPageResponse;
+import com.pickstage.backend.dto.MyPageUpdateRequest;
 import com.pickstage.backend.dto.PasswordChangeRequest;
 import com.pickstage.backend.entity.User;
 import com.pickstage.backend.repository.RefreshTokenRepository;
@@ -37,6 +38,47 @@ public class UserService {
                                 "사용자를 찾을 수 없습니다."
                         )
                 );
+
+        return MyPageResponse.builder()
+                .id(user.getId())
+                .email(user.getEmail())
+                .nickname(user.getNickname())
+                .profileImage(user.getProfileImage())
+                .role(user.getRole().name())
+                .createdAt(user.getCreatedAt())
+                .build();
+    }
+
+    // 내 정보 수정
+    @Transactional
+    public MyPageResponse updateMyPage(
+            Long userId,
+            MyPageUpdateRequest request) {
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() ->
+                        new IllegalStateException(
+                                "사용자를 찾을 수 없습니다."
+                        )
+                );
+
+        // 닉네임이 전달된 경우에만 중복 확인 하게끔
+        if (request.getNickname() != null
+                && !request.getNickname()
+                        .equals(user.getNickname())
+                && userRepository.existsByNickname(
+                        request.getNickname())) {
+
+            throw new IllegalArgumentException(
+                    "이미 사용 중인 닉네임입니다."
+            );
+        }
+
+        // 닉네임 및 프로필 이미지 수정
+        user.updateProfile(
+                request.getNickname(),
+                request.getProfileImage()
+        );
 
         return MyPageResponse.builder()
                 .id(user.getId())

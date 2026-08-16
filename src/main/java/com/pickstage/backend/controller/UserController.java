@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.pickstage.backend.dto.MyPageResponse;
+import com.pickstage.backend.dto.MyPageUpdateRequest;
 import com.pickstage.backend.dto.PasswordChangeRequest;
 import com.pickstage.backend.global.response.ApiResponse;
 import com.pickstage.backend.service.AuthService;
@@ -68,6 +69,23 @@ public class UserController {
 
         MyPageResponse response =
                 userService.getMyPage(userId);
+
+        return ResponseEntity.ok(
+                ApiResponse.success(response)
+        );
+    }
+
+    // 내 정보 수정
+    @PatchMapping("/mypage")
+    public ResponseEntity<ApiResponse<MyPageResponse>> updateMyPage(
+            @AuthenticationPrincipal Long userId,
+            @Valid @RequestBody MyPageUpdateRequest request) {
+
+        MyPageResponse response =
+                userService.updateMyPage(
+                        userId,
+                        request
+                );
 
         return ResponseEntity.ok(
                 ApiResponse.success(response)
