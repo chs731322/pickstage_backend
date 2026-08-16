@@ -4,12 +4,14 @@ import com.pickstage.backend.dto.ArtistInfo;
 import com.pickstage.backend.dto.FestivalCalendarResponse;
 import com.pickstage.backend.dto.FestivalDetailResponse;
 import com.pickstage.backend.dto.FestivalListResponse;
+import com.pickstage.backend.dto.TicketInfo;
 import com.pickstage.backend.dto.VenueInfo;
 import com.pickstage.backend.entity.Festival;
 import com.pickstage.backend.entity.FestivalImage;
 import com.pickstage.backend.repository.FestivalArtistRepository;
 import com.pickstage.backend.repository.FestivalImageRepository;
 import com.pickstage.backend.repository.FestivalRepository;
+import com.pickstage.backend.repository.FestivalTicketRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -26,13 +28,16 @@ public class FestivalService {
         private final FestivalRepository festivalRepository;
         private final FestivalImageRepository festivalImageRepository;
         private final FestivalArtistRepository festivalArtistRepository;
+        private final FestivalTicketRepository festivalTicketRepository;
 
         public FestivalService(FestivalRepository festivalRepository,
                         FestivalImageRepository festivalImageRepository,
-                        FestivalArtistRepository festivalArtistRepository) {
+                        FestivalArtistRepository festivalArtistRepository,
+                        FestivalTicketRepository festivalTicketRepository) {
                 this.festivalRepository = festivalRepository;
                 this.festivalImageRepository = festivalImageRepository;
                 this.festivalArtistRepository = festivalArtistRepository;
+                this.festivalTicketRepository = festivalTicketRepository;
         }
 
         // 공연 목록 조회
@@ -126,6 +131,15 @@ public class FestivalService {
                                                                 .longitude(null)
                                                                 .build())
                                 .artists(artists)
+                                .tickets(festivalTicketRepository.findByFestivalIdOrderBySortOrderAsc(id).stream()
+                                                .map(ticket -> TicketInfo.builder()
+                                                                .label(ticket.getLabel())
+                                                                .vendorName(ticket.getVendorName())
+                                                                .price(ticket.getPrice())
+                                                                .bookingUrl(ticket.getBookingUrl())
+                                                                .openAt(ticket.getOpenAt())
+                                                                .build())
+                                                .toList())
                                 .build();
         }
 
