@@ -125,14 +125,23 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.fail("잘못된 요청입니다."));
     }
 
-    // 이미 북마크한 공연일 경우
+    // 본인 소유가 아닌 리소스에 접근하려는 경우
+    @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleAccessDenied(
+            org.springframework.security.access.AccessDeniedException e) {
+        return ResponseEntity
+                .status(HttpStatus.FORBIDDEN)
+                .body(ApiResponse.fail(e.getMessage()));
+    }
+
+    // 이미 존재하는 리소스를 중복 생성하려는 경우 (북마크, 관심 아티스트 등)
     @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
     public ResponseEntity<ApiResponse<Void>> handleDataIntegrityViolation(
             org.springframework.dao.DataIntegrityViolationException e) {
 
         return ResponseEntity
                 .status(HttpStatus.CONFLICT)
-                .body(ApiResponse.fail("이미 북마크한 공연입니다."));
+                .body(ApiResponse.fail(e.getMessage()));
     }
 
     // 이메일 발송에 실패한 경우

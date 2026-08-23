@@ -1,20 +1,24 @@
 package com.pickstage.backend.service;
 
 import com.pickstage.backend.dto.ArtistInfo;
+import com.pickstage.backend.dto.FestivalCalendarResponse;
 import com.pickstage.backend.dto.FestivalDetailResponse;
 import com.pickstage.backend.dto.FestivalListResponse;
+import com.pickstage.backend.dto.TicketInfo;
 import com.pickstage.backend.dto.VenueInfo;
 import com.pickstage.backend.entity.Festival;
 import com.pickstage.backend.entity.FestivalImage;
 import com.pickstage.backend.repository.FestivalArtistRepository;
 import com.pickstage.backend.repository.FestivalImageRepository;
 import com.pickstage.backend.repository.FestivalRepository;
+import com.pickstage.backend.repository.FestivalTicketRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.time.LocalDate;
 
 import java.util.List;
 
@@ -24,13 +28,16 @@ public class FestivalService {
         private final FestivalRepository festivalRepository;
         private final FestivalImageRepository festivalImageRepository;
         private final FestivalArtistRepository festivalArtistRepository;
+        private final FestivalTicketRepository festivalTicketRepository;
 
         public FestivalService(FestivalRepository festivalRepository,
                         FestivalImageRepository festivalImageRepository,
-                        FestivalArtistRepository festivalArtistRepository) {
+                        FestivalArtistRepository festivalArtistRepository,
+                        FestivalTicketRepository festivalTicketRepository) {
                 this.festivalRepository = festivalRepository;
                 this.festivalImageRepository = festivalImageRepository;
                 this.festivalArtistRepository = festivalArtistRepository;
+                this.festivalTicketRepository = festivalTicketRepository;
         }
 
         // 공연 목록 조회
@@ -124,6 +131,15 @@ public class FestivalService {
                                                                 .longitude(null)
                                                                 .build())
                                 .artists(artists)
+                                .tickets(festivalTicketRepository.findByFestivalIdOrderBySortOrderAsc(id).stream()
+                                                .map(ticket -> TicketInfo.builder()
+                                                                .label(ticket.getLabel())
+                                                                .vendorName(ticket.getVendorName())
+                                                                .price(ticket.getPrice())
+                                                                .bookingUrl(ticket.getBookingUrl())
+                                                                .openAt(ticket.getOpenAt())
+                                                                .build())
+                                                .toList())
                                 .build();
         }
 
@@ -141,5 +157,39 @@ public class FestivalService {
                                 .orElseThrow(() -> new IllegalStateException("존재하지 않는 공연입니다."));
                 festival.decrementBookmarkCount();
                 festivalRepository.save(festival);
+        }
+
+        /*
+         * public List<FestivalCalendarResponse> getCalendar(int year, int month) { ...
+         * }
+         * month가 1~12 밖이면 IllegalArgumentException("올바르지 않은 요청입니다.") (400)
+         * LocalDate startOfMonth = LocalDate.of(year, month, 1)
+         * LocalDate endOfMonth =
+         * startOfMonth.withDayOfMonth(startOfMonth.lengthOfMonth()) (그 달의 마지막 날 자동 계산 —
+         * 28/29/30/31 신경 안 써도 됨)
+         * 리포지토리 호출 후 FestivalCalendarResponse로 매핑해서 반환
+         */
+
+        public List<FestivalCalendarResponse> getCalendar(int year, int month) {
+                if (month < 1 || month > 12) {
+                        throw new IllegalArgumentException("올바르지 않은 요청입니다.");
+                }
+
+                java.time.LocalDate startOfMonth = java.time.LocalDate.of(year, month, 1);
+                java.time.LocalDate endOfMonth = startOfMonth.withDayOfMonth(startOfMonth.lengthOfMonth());
+
+                List<Festival> festivals = festivalRepository.findByDateRange(startOfMonth, endOfMonth);
+
+                return festivals.stream()
+                                .map(festival -> FestivalCalendarResponse.builder()
+                                                .id(festival.getId())
+                                                .title(festival.getTitle())
+                                                .startDate(festival.getStartDate().toString())
+                                                .endDate(festival.getEndDate().toString())
+                                                .region(festival.getRegion())
+                                                .posterImage(festival.getPosterUrl())
+                                                .venueName(festival.getVenueName())
+                                                .build())
+                                .toList();
         }
 }

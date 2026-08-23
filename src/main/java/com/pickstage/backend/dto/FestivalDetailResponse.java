@@ -36,4 +36,5 @@ public class FestivalDetailResponse {
 
     private VenueInfo venue;
     private List<ArtistInfo> artists;
+    private List<TicketInfo> tickets;
 }
