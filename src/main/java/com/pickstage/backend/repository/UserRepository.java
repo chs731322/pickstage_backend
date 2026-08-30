@@ -1,7 +1,12 @@
 package com.pickstage.backend.repository;
 
 import com.pickstage.backend.entity.User;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.Optional;
 
@@ -15,4 +20,13 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     // 닉네임 존재 여부 확인 (중복확인)
     boolean existsByNickname(String nickname);
+
+    // 회원 목록 조회
+    @Query("SELECT u FROM User u WHERE " +
+                        "(:role IS NULL OR u.role = :role) AND " +
+                        "(:keyword IS NULL OR u.email LIKE %:keyword% OR u.nickname LIKE %:keyword%)")
+        Page<User> findByFilters(
+                        @Param("keyword") String keyword,
+                        @Param("role") User.Role role,
+                        Pageable pageable);
 }

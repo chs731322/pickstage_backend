@@ -14,6 +14,7 @@ import com.pickstage.backend.dto.PostListResponse;
 import com.pickstage.backend.dto.PostUpdateRequest;
 import com.pickstage.backend.entity.Post;
 import com.pickstage.backend.entity.PostImage;
+import com.pickstage.backend.entity.User;
 import com.pickstage.backend.repository.FestivalRepository;
 import com.pickstage.backend.repository.PostRepository;
 import com.pickstage.backend.repository.UserRepository;
@@ -29,7 +30,9 @@ public class PostService {
     private final CommentRepository commentRepository;
     private final PostImageRepository postImageRepository;
 
-    public PostService(PostRepository postRepository, FestivalRepository festivalRepository, UserRepository userRepository, CommentRepository commentRepository, PostImageRepository postImageRepository) {
+    public PostService(PostRepository postRepository, FestivalRepository festivalRepository,
+            UserRepository userRepository, CommentRepository commentRepository,
+            PostImageRepository postImageRepository) {
         this.postRepository = postRepository;
         this.festivalRepository = festivalRepository;
         this.userRepository = userRepository;
@@ -166,6 +169,20 @@ public class PostService {
             throw new AccessDeniedException(forbiddenMessage);
         }
         return post;
+    }
+
+    @Transactional
+    public void forceDeletePost(Long userId, Long postId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalStateException("사용자를 찾을 수 없습니다."));
+
+        if (!user.getRole().equals(User.Role.admin)) {
+            throw new AccessDeniedException("관리자 권한이 없습니다.");
+        }
+
+        Post post = findVisiblePost(postId);
+        post.setDeletedAt(LocalDateTime.now());
+        postRepository.save(post);
     }
 
     private Post.Category parseCategory(String category) {

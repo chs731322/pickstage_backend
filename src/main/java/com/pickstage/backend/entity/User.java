@@ -75,4 +75,11 @@ public class User {
     public enum Role {
         user, admin
     }
+
+    // 회원 권한 변경
+    public void updateRole(
+            Role role) {
+        this.role = role;
+        this.updatedAt = LocalDateTime.now();
+    }
 }
