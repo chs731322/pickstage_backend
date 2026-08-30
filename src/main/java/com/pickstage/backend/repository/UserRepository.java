@@ -15,4 +15,10 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     // 닉네임 존재 여부 확인 (중복확인)
     boolean existsByNickname(String nickname);
+
+    // 소셜 로그인 사용자 찾기
+    Optional<User> findBySocialProviderAndSocialId(
+            User.SocialProvider socialProvider,
+            String socialId
+    );
 }
