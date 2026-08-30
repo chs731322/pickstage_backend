@@ -116,6 +116,19 @@ public class AuthController {
         );
     }
 
+    // 카카오 로그인 콜백
+    @GetMapping("/kakao/callback")
+    public ResponseEntity<ApiResponse<AuthResponse>> kakaoCallback(
+            @RequestParam String code) {
+
+        AuthResponse response =
+                authService.kakaoLogin(code);
+
+        return ResponseEntity.ok(
+                ApiResponse.success(response)
+        );
+    }
+
     // 로그아웃
     @PostMapping("/signout")
     public ResponseEntity<ApiResponse<Void>> signout(

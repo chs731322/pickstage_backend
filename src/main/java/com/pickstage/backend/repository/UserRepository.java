@@ -29,4 +29,10 @@ public interface UserRepository extends JpaRepository<User, Long> {
                         @Param("keyword") String keyword,
                         @Param("role") User.Role role,
                         Pageable pageable);
+
+    // 소셜 로그인 사용자 찾기
+    Optional<User> findBySocialProviderAndSocialId(
+            User.SocialProvider socialProvider,
+            String socialId
+    );
 }

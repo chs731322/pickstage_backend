@@ -1,6 +1,7 @@
 package com.pickstage.backend.service;
 
 import com.pickstage.backend.dto.AuthResponse;
+import com.pickstage.backend.dto.KakaoUserResponse;
 import com.pickstage.backend.dto.PasswordResetRequest;
 import com.pickstage.backend.dto.ReissueResponse;
 import com.pickstage.backend.dto.SigninRequest;
@@ -30,19 +31,23 @@ public class AuthService {
     private final JwtProvider jwtProvider;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
+    private final KakaoService kakaoService;
 
     public AuthService(UserRepository userRepository,
                        RefreshTokenRepository refreshTokenRepository,
                        PasswordResetTokenRepository passwordResetTokenRepository,
                        JwtProvider jwtProvider,
                        PasswordEncoder passwordEncoder,
-                       EmailService emailService) {
+                       EmailService emailService,
+                       KakaoService kakaoService) {
+
         this.userRepository = userRepository;
         this.refreshTokenRepository = refreshTokenRepository;
         this.passwordResetTokenRepository = passwordResetTokenRepository;
         this.jwtProvider = jwtProvider;
         this.passwordEncoder = passwordEncoder;
         this.emailService = emailService;
+        this.kakaoService = kakaoService;
     }
 
     // 이메일 중복 확인
@@ -120,6 +125,108 @@ public class AuthService {
         }
 
         return generateTokens(user);
+    }
+
+    // 카카오 로그인
+    @Transactional
+    public AuthResponse kakaoLogin(String code) {
+
+        // 인가코드로 카카오 Access Token 발급
+        String kakaoAccessToken =
+                kakaoService.getAccessToken(code);
+
+        // 카카오 사용자 정보 조회
+        KakaoUserResponse kakaoUser =
+                kakaoService.getUserInfo(kakaoAccessToken);
+
+        String socialId =
+                String.valueOf(kakaoUser.getId());
+
+        // 기존 카카오 회원인지 확인
+        User existingUser =
+                userRepository
+                        .findBySocialProviderAndSocialId(
+                                User.SocialProvider.kakao,
+                                socialId
+                        )
+                        .orElse(null);
+
+        if (existingUser != null) {
+
+            // 탈퇴한 사용자는 로그인 불가
+            if (existingUser.getDeletedAt() != null) {
+                throw new IllegalArgumentException(
+                        "탈퇴한 회원입니다."
+                );
+            }
+
+            return generateTokens(existingUser);
+        }
+
+        // 신규 카카오 회원 정보
+        KakaoUserResponse.KakaoAccount kakaoAccount =
+                kakaoUser.getKakaoAccount();
+
+        if (kakaoAccount == null
+                || kakaoAccount.getEmail() == null
+                || kakaoAccount.getEmail().isBlank()) {
+
+            throw new IllegalArgumentException(
+                    "카카오 계정 이메일 정보를 가져올 수 없습니다."
+            );
+        }
+
+        String email = kakaoAccount.getEmail();
+
+        String nickname = "카카오사용자" + socialId;
+
+        String profileImage = null;
+
+        if (kakaoAccount.getProfile() != null) {
+
+            if (kakaoAccount.getProfile().getNickname() != null
+                    && !kakaoAccount.getProfile()
+                            .getNickname()
+                            .isBlank()) {
+
+                nickname =
+                        kakaoAccount.getProfile()
+                                .getNickname();
+            }
+
+            profileImage =
+                    kakaoAccount.getProfile()
+                            .getProfileImageUrl();
+        }
+
+        // 동일 닉네임이 이미 존재하면 중복되지 않도록 변경
+        if (userRepository.existsByNickname(nickname)) {
+            nickname = nickname + "_" + socialId;
+        }
+
+        // 동일 이메일이 이미 존재하는 경우
+        if (userRepository.existsByEmail(email)) {
+            throw new IllegalArgumentException(
+                    "이미 다른 방식으로 가입된 이메일입니다."
+            );
+        }
+
+        // 신규 카카오 회원 자동 가입
+        User newUser = User.builder()
+                .email(email)
+                .passwordHash(null)
+                .nickname(nickname)
+                .profileImage(profileImage)
+                .socialProvider(User.SocialProvider.kakao)
+                .socialId(socialId)
+                .role(User.Role.user)
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
+
+        userRepository.save(newUser);
+
+        return generateTokens(newUser);
     }
 
     // 로그아웃
