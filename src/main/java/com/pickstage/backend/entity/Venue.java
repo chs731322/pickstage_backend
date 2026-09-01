@@ -20,7 +20,7 @@ public class Venue {
     private String region;
     private BigDecimal latitude;
     private BigDecimal longitude;
-    private int capacity;
+    private Integer capacity;
 
     @Column(columnDefinition = "json")
     private String facilities;

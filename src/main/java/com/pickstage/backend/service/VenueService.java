@@ -1,13 +1,20 @@
 package com.pickstage.backend.service;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import com.pickstage.backend.repository.VenueRepository;
 import com.pickstage.backend.repository.VenueImageRepository;
 import com.pickstage.backend.repository.UserRepository;
+import com.pickstage.backend.dto.PageResponse;
 import com.pickstage.backend.dto.VenueDetailResponse;
 import com.pickstage.backend.dto.VenueImageInfo;
+import com.pickstage.backend.dto.VenueListResponse;
 import com.pickstage.backend.dto.VenueReviewInfo;
 import com.pickstage.backend.dto.VenueUpcomingConcertInfo;
+import com.pickstage.backend.entity.Venue;
 import com.pickstage.backend.repository.FestivalRepository;
 import com.pickstage.backend.repository.VenueReviewRepository;
 import com.pickstage.backend.repository.ReviewImageRepository;
@@ -43,6 +50,37 @@ public class VenueService {
         this.venueReviewRepository = venueReviewRepository;
         this.userRepository = userRepository;
         this.reviewImageRepository = reviewImageRepository;
+    }
+
+    // 공연장 목록 조회
+    public PageResponse<VenueListResponse> getVenues(
+            String region, String keyword, String sort, int page, int size) {
+
+        if (page < 0 || size <= 0) {
+            throw new IllegalArgumentException("올바르지 않은 요청입니다.");
+        }
+
+        Page<Venue> venues;
+
+        if ("popular".equals(sort)) {
+            Pageable pageable = PageRequest.of(page, size);
+            venues = venueRepository.findByFiltersOrderByReviewCountDesc(region, keyword, pageable);
+        } else {
+            Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+            venues = venueRepository.findByFilters(region, keyword, pageable);
+        }
+
+        Page<VenueListResponse> content = venues.map(venue -> VenueListResponse.builder()
+                .id(venue.getId())
+                .name(venue.getName())
+                .address(venue.getAddress())
+                .region(venue.getRegion())
+                .image(venueImageRepository.findFirstByVenueIdOrderBySortOrderAsc(venue.getId())
+                        .map(image -> image.getImageUrl())
+                        .orElse(null))
+                .build());
+
+        return PageResponse.of(content);
     }
 
     // 공연장 상세 조회
