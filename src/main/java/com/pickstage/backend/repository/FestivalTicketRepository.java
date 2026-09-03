@@ -8,4 +8,6 @@ import java.util.List;
 public interface FestivalTicketRepository extends JpaRepository<FestivalTicket, Long> {
 
     List<FestivalTicket> findByFestivalIdOrderBySortOrderAsc(Long festivalId);
+
+    void deleteByFestivalId(Long festivalId);
 }

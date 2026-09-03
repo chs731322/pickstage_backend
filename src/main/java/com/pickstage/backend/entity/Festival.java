@@ -8,6 +8,7 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "festivals")
 @Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder

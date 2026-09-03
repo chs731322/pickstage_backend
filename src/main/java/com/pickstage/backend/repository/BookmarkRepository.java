@@ -14,6 +14,9 @@ public interface BookmarkRepository extends JpaRepository<Bookmark, Long> {
     // 북마크 삭제 메서드
     void deleteByUserIdAndFestivalId(Long userId, Long festivalId);
 
+    // 관리자 공연 삭제 시 해당 공연의 북마크 일괄 삭제
+    void deleteByFestivalId(Long festivalId);
+
     // 특정 사용자의 모든 북마크를 조회하는 메서드
     List<Bookmark> findByUserId(Long userId);
 }

@@ -20,4 +20,7 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
 
     // 배치 스케줄러: 발송 시각이 지난 미발송 알림 조회
     List<Notification> findByIsSentFalseAndScheduledAtLessThanEqual(LocalDateTime now);
+
+    // 관리자 공연 삭제 시 해당 공연 관련 알림 일괄 삭제
+    void deleteByFestivalId(Long festivalId);
 }
