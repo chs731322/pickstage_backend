@@ -16,11 +16,13 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.pickstage.backend.dto.AdminFestivalRequest;
+import com.pickstage.backend.dto.AdminNoticeRequest;
 import com.pickstage.backend.dto.AdminUserResponse;
 import com.pickstage.backend.dto.PageResponse;
 import com.pickstage.backend.dto.RoleUpdateRequest;
 import com.pickstage.backend.global.response.ApiResponse;
 import com.pickstage.backend.service.FestivalService;
+import com.pickstage.backend.service.NoticeService;
 import com.pickstage.backend.service.PostService;
 import com.pickstage.backend.service.ReviewService;
 import com.pickstage.backend.service.UserService;
@@ -32,13 +34,41 @@ public class AdminController {
     private final ReviewService reviewService;
     private final UserService userService;
     private final FestivalService festivalService;
+    private final NoticeService noticeService;
 
     public AdminController(PostService postService, ReviewService reviewService, UserService userService,
-            FestivalService festivalService) {
+            FestivalService festivalService, NoticeService noticeService) {
         this.postService = postService;
         this.reviewService = reviewService;
         this.userService = userService;
         this.festivalService = festivalService;
+        this.noticeService = noticeService;
+    }
+
+    // 관리자 공지사항 등록
+    @PostMapping("/notices")
+    public ResponseEntity<ApiResponse<Map<String, Long>>> createNotice(
+            @AuthenticationPrincipal Long userId, @RequestBody AdminNoticeRequest request) {
+        Long noticeId = noticeService.createNotice(userId, request);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success(Map.of("id", noticeId), "공지사항이 등록되었습니다."));
+    }
+
+    // 관리자 공지사항 수정
+    @PatchMapping("/notices/{id}")
+    public ResponseEntity<ApiResponse<Void>> updateNotice(
+            @AuthenticationPrincipal Long userId, @PathVariable Long id,
+            @RequestBody AdminNoticeRequest request) {
+        noticeService.updateNotice(userId, id, request);
+        return ResponseEntity.ok(ApiResponse.success("공지사항이 수정되었습니다."));
+    }
+
+    // 관리자 공지사항 삭제
+    @DeleteMapping("/notices/{id}")
+    public ResponseEntity<ApiResponse<Void>> deleteNotice(
+            @AuthenticationPrincipal Long userId, @PathVariable Long id) {
+        noticeService.deleteNotice(userId, id);
+        return ResponseEntity.ok(ApiResponse.success("공지사항이 삭제되었습니다."));
     }
 
     // 관리자 공연 등록
