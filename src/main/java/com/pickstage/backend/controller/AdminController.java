@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.pickstage.backend.dto.AdminFAQRequest;
 import com.pickstage.backend.dto.AdminFestivalRequest;
 import com.pickstage.backend.dto.AdminNoticeRequest;
 import com.pickstage.backend.dto.AdminUserResponse;
@@ -26,6 +27,7 @@ import com.pickstage.backend.service.NoticeService;
 import com.pickstage.backend.service.PostService;
 import com.pickstage.backend.service.ReviewService;
 import com.pickstage.backend.service.UserService;
+import com.pickstage.backend.service.FAQService;
 
 @RestController
 @RequestMapping("/api/admin")
@@ -35,14 +37,16 @@ public class AdminController {
     private final UserService userService;
     private final FestivalService festivalService;
     private final NoticeService noticeService;
+    private final FAQService faqService;
 
     public AdminController(PostService postService, ReviewService reviewService, UserService userService,
-            FestivalService festivalService, NoticeService noticeService) {
+                           FestivalService festivalService, NoticeService noticeService, FAQService faqService) {
         this.postService = postService;
         this.reviewService = reviewService;
         this.userService = userService;
         this.festivalService = festivalService;
         this.noticeService = noticeService;
+        this.faqService = faqService;
     }
 
     // 관리자 공지사항 등록
@@ -69,6 +73,32 @@ public class AdminController {
             @AuthenticationPrincipal Long userId, @PathVariable Long id) {
         noticeService.deleteNotice(userId, id);
         return ResponseEntity.ok(ApiResponse.success("공지사항이 삭제되었습니다."));
+    }
+
+    // 관리자 FAQ 등록
+    @PostMapping("/faqs")
+    public ResponseEntity<ApiResponse<Map<String, Long>>> createFaq(
+            @AuthenticationPrincipal Long userId, @RequestBody AdminFAQRequest request) {
+        Long faqId = faqService.createFAQ(userId, request);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success(Map.of("id", faqId), "FAQ가 등록되었습니다."));
+    }
+
+    // 관리자 FAQ 수정
+    @PatchMapping("/faqs/{id}")
+    public ResponseEntity<ApiResponse<Void>> updateFaq(
+            @AuthenticationPrincipal Long userId, @PathVariable Long id,
+            @RequestBody AdminFAQRequest request) {
+        faqService.updateFAQ(userId, id, request);
+        return ResponseEntity.ok(ApiResponse.success("FAQ가 수정되었습니다."));
+    }
+
+    // 관리자 FAQ 삭제
+    @DeleteMapping("/faqs/{id}")
+    public ResponseEntity<ApiResponse<Void>> deleteFaq(
+            @AuthenticationPrincipal Long userId, @PathVariable Long id) {
+        faqService.deleteFAQ(userId, id);
+        return ResponseEntity.ok(ApiResponse.success("FAQ가 삭제되었습니다."));
     }
 
     // 관리자 공연 등록
