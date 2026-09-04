@@ -18,12 +18,14 @@ public class BookmarkService {
     private final BookmarkRepository bookmarkRepository;
     private final FestivalService festivalService;
     private final FestivalRepository festivalRepository;
+    private final NotificationService notificationService;
 
     public BookmarkService(BookmarkRepository bookmarkRepository, FestivalService festivalService,
-            FestivalRepository festivalRepository) {
+                           FestivalRepository festivalRepository, NotificationService notificationService) {
         this.bookmarkRepository = bookmarkRepository;
         this.festivalService = festivalService;
         this.festivalRepository = festivalRepository;
+        this.notificationService = notificationService;
     }
 
     // 북마크 조회
@@ -32,6 +34,7 @@ public class BookmarkService {
     }
 
     // 북마크 추가
+    @Transactional
     public void addBookmark(Long userId, Long festivalId) {
         if (!festivalRepository.existsById(festivalId)) {
             throw new IllegalStateException("존재하지 않는 공연입니다.");
@@ -48,6 +51,8 @@ public class BookmarkService {
 
         // 축제의 북마크 수 증가
         festivalService.incrementBookmarkCount(festivalId);
+
+        notificationService.scheduleTicketOpenNotification(userId, festivalId);
     }
 
     // 북마크 삭제

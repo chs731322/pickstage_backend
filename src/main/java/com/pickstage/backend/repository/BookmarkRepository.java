@@ -19,4 +19,13 @@ public interface BookmarkRepository extends JpaRepository<Bookmark, Long> {
 
     // 특정 사용자의 모든 북마크를 조회하는 메서드
     List<Bookmark> findByUserId(Long userId);
+
+    // 특정 사용자의 특정 공연에 대한 북마크를 조회하는 메서드
+    Bookmark findByUserIdAndFestivalId(Long userId, Long festivalId);
+
+    // 특정 공연에 대한 북마크 수를 조회하는 메서드
+    long countByFestivalId(Long festivalId);
+
+    // 이 공연을 북마크한 사용자들
+    List<Bookmark> findByFestivalId(Long festivalId);
 }
