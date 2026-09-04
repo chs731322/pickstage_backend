@@ -26,6 +26,12 @@ public class ChecklistService {
     // 체크리스트 조회 (최초 조회 시 템플릿 복사)
     @Transactional
     public List<Checklist> getChecklistByUserId(Long userId) {
+        seedTemplateIfNeeded(userId);
+        return checklistRepository.findByUserIdOrderBySortOrderAsc(userId);
+    }
+
+    // 유저의 체크리스트가 없으면 템플릿을 복사해서 채워줌
+    private void seedTemplateIfNeeded(Long userId) {
         if (!checklistRepository.existsByUserId(userId)) {
             List<ChecklistTemplate> templates = checklistTemplateRepository.findAllByOrderBySortOrderAsc();
             for (ChecklistTemplate template : templates) {
@@ -38,11 +44,18 @@ public class ChecklistService {
                 checklistRepository.save(checklist);
             }
         }
-        return checklistRepository.findByUserIdOrderBySortOrderAsc(userId);
     }
 
     // 체크리스트 항목 추가
+    @Transactional
     public Checklist addChecklistItem(Long userId, String content) {
+        // content가 null이거나 공백인 경우 예외 처리
+        if (content == null || content.trim().isEmpty()) {
+            throw new IllegalArgumentException("체크리스트 항목 내용은 비어 있을 수 없습니다.");
+        }
+
+        seedTemplateIfNeeded(userId);
+
         int maxSortOrder = checklistRepository.findByUserIdOrderBySortOrderAsc(userId).stream()
                 .mapToInt(Checklist::getSortOrder)
                 .max()
@@ -62,6 +75,9 @@ public class ChecklistService {
         Checklist checklist = findOwnedChecklist(checklistId, userId, "수정 권한이 없습니다.");
 
         if (content != null) {
+            if (content.trim().isEmpty()) {
+                throw new IllegalArgumentException("체크리스트 항목 내용은 비어 있을 수 없습니다.");
+            }
             checklist.setContent(content);
         }
         if (isChecked != null) {

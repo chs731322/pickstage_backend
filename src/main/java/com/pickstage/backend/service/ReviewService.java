@@ -124,9 +124,7 @@ public class ReviewService {
                         Long reviewId,
                         ReviewUpdateRequest request) {
 
-                VenueReview review = venueReviewRepository.findById(reviewId)
-                                .orElseThrow(() -> new IllegalStateException(
-                                                "존재하지 않는 후기입니다."));
+                VenueReview review = findVisibleReview(reviewId);
 
                 if (!review.getUserId().equals(userId)) {
                         throw new AccessDeniedException(
@@ -184,9 +182,7 @@ public class ReviewService {
                         Long userId,
                         Long reviewId) {
 
-                VenueReview review = venueReviewRepository.findById(reviewId)
-                                .orElseThrow(() -> new IllegalStateException(
-                                                "존재하지 않는 후기입니다."));
+                VenueReview review = findVisibleReview(reviewId);
 
                 if (!review.getUserId().equals(userId)) {
                         throw new AccessDeniedException(
@@ -197,6 +193,20 @@ public class ReviewService {
                                 java.time.LocalDateTime.now());
 
                 venueReviewRepository.save(review);
+        }
+
+        // 삭제되지 않은 후기 조회
+        private VenueReview findVisibleReview(Long reviewId) {
+                VenueReview review = venueReviewRepository.findById(reviewId)
+                                .orElseThrow(() -> new IllegalStateException(
+                                                "존재하지 않는 후기입니다."));
+
+                if (review.getDeletedAt() != null) {
+                        throw new IllegalStateException(
+                                        "존재하지 않는 후기입니다.");
+                }
+
+                return review;
         }
 
         @Transactional

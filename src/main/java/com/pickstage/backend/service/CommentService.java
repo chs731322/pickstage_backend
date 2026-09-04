@@ -37,6 +37,9 @@ public class CommentService {
             if (parent.getDeletedAt() != null) {
                 throw new IllegalStateException("존재하지 않는 댓글입니다.");
             }
+            if (parent.getParentId() != null) {
+                throw new IllegalArgumentException("대댓글에는 답글을 달 수 없습니다.");
+            }
         }
 
         Comment comment = Comment.builder()
