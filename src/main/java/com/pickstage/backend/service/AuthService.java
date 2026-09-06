@@ -2,6 +2,7 @@ package com.pickstage.backend.service;
 
 import com.pickstage.backend.dto.AuthResponse;
 import com.pickstage.backend.dto.KakaoUserResponse;
+import com.pickstage.backend.dto.NaverUserResponse;
 import com.pickstage.backend.dto.PasswordResetRequest;
 import com.pickstage.backend.dto.ReissueResponse;
 import com.pickstage.backend.dto.SigninRequest;
@@ -32,6 +33,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
     private final KakaoService kakaoService;
+    private final NaverService naverService;
 
     public AuthService(UserRepository userRepository,
                        RefreshTokenRepository refreshTokenRepository,
@@ -39,7 +41,8 @@ public class AuthService {
                        JwtProvider jwtProvider,
                        PasswordEncoder passwordEncoder,
                        EmailService emailService,
-                       KakaoService kakaoService) {
+                       KakaoService kakaoService,
+                       NaverService naverService) {
 
         this.userRepository = userRepository;
         this.refreshTokenRepository = refreshTokenRepository;
@@ -48,6 +51,7 @@ public class AuthService {
         this.passwordEncoder = passwordEncoder;
         this.emailService = emailService;
         this.kakaoService = kakaoService;
+        this.naverService = naverService;
     }
 
     // 이메일 중복 확인
@@ -218,6 +222,116 @@ public class AuthService {
                 .nickname(nickname)
                 .profileImage(profileImage)
                 .socialProvider(User.SocialProvider.kakao)
+                .socialId(socialId)
+                .role(User.Role.user)
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
+
+        userRepository.save(newUser);
+
+        return generateTokens(newUser);
+    }
+
+    // 네이버 로그인
+    @Transactional
+    public AuthResponse naverLogin(
+            String code,
+            String state) {
+
+        // 인가코드와 state로 네이버 Access Token 발급
+        String naverAccessToken =
+                naverService.getAccessToken(
+                        code,
+                        state
+                );
+
+        // 네이버 사용자 정보 조회
+        NaverUserResponse naverUser =
+                naverService.getUserInfo(
+                        naverAccessToken
+                );
+
+        NaverUserResponse.Response naverAccount =
+                naverUser.getResponse();
+
+        String socialId =
+                naverAccount.getId();
+
+        // 기존 네이버 회원인지 확인
+        User existingUser =
+                userRepository
+                        .findBySocialProviderAndSocialId(
+                                User.SocialProvider.naver,
+                                socialId
+                        )
+                        .orElse(null);
+
+        if (existingUser != null) {
+
+            // 탈퇴한 사용자는 로그인 불가
+            if (existingUser.getDeletedAt() != null) {
+                throw new IllegalArgumentException(
+                        "탈퇴한 회원입니다."
+                );
+            }
+
+            return generateTokens(existingUser);
+        }
+
+        // 이메일 정보 확인
+        if (naverAccount.getEmail() == null
+                || naverAccount.getEmail().isBlank()) {
+
+            throw new IllegalArgumentException(
+                    "네이버 계정 이메일 정보를 가져올 수 없습니다."
+            );
+        }
+
+        String email =
+                naverAccount.getEmail();
+
+        String nickname =
+                "네이버사용자" + socialId;
+
+        String profileImage = null;
+
+        // 네이버 닉네임이 있으면 사용
+        if (naverAccount.getNickname() != null
+                && !naverAccount.getNickname().isBlank()) {
+
+            nickname =
+                    naverAccount.getNickname();
+        }
+
+        // 네이버 프로필 이미지가 있으면 사용
+        if (naverAccount.getProfile_image() != null
+                && !naverAccount.getProfile_image().isBlank()) {
+
+            profileImage =
+                    naverAccount.getProfile_image();
+        }
+
+        // 동일 닉네임이 이미 존재하면 중복되지 않도록 변경
+        if (userRepository.existsByNickname(nickname)) {
+            nickname =
+                    nickname + "_" + socialId;
+        }
+
+        // 동일 이메일이 이미 존재하는 경우
+        if (userRepository.existsByEmail(email)) {
+            throw new IllegalArgumentException(
+                    "이미 다른 방식으로 가입된 이메일입니다."
+            );
+        }
+
+        // 신규 네이버 회원 자동 가입
+        User newUser = User.builder()
+                .email(email)
+                .passwordHash(null)
+                .nickname(nickname)
+                .profileImage(profileImage)
+                .socialProvider(User.SocialProvider.naver)
                 .socialId(socialId)
                 .role(User.Role.user)
                 .createdAt(LocalDateTime.now())

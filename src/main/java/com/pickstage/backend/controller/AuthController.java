@@ -128,6 +128,23 @@ public class AuthController {
                 ApiResponse.success(response)
         );
     }
+    
+    // 네이버 로그인 콜백
+    @GetMapping("/naver/callback")
+    public ResponseEntity<ApiResponse<AuthResponse>> naverCallback(
+            @RequestParam String code,
+            @RequestParam String state) {
+
+        AuthResponse response =
+                authService.naverLogin(
+                        code,
+                        state
+                );
+
+        return ResponseEntity.ok(
+                ApiResponse.success(response)
+        );
+    }
 
     // 로그아웃
     @PostMapping("/signout")
