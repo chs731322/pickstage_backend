@@ -1,10 +1,14 @@
 package com.pickstage.backend.service;
 
+import com.pickstage.backend.dto.InterestArtistResponse;
+import com.pickstage.backend.entity.Artist;
 import com.pickstage.backend.entity.InterestArtist;
 import com.pickstage.backend.repository.ArtistRepository;
 import com.pickstage.backend.repository.InterestArtistRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 
 @Service
@@ -21,6 +25,33 @@ public class InterestArtistService {
     // 유저 아이디와 아티스트 아이디로 관심 아티스트가 존재하는지 확인
     public boolean isInterestArtistExists(Long userId, Long artistId) {
         return interestArtistRepository.existsByUserIdAndArtistId(userId, artistId);
+    }
+
+    // 내 관심 아티스트 목록 조회
+    @Transactional(readOnly = true)
+    public List<InterestArtistResponse> getMyInterestArtists(Long userId) {
+
+        return interestArtistRepository
+                .findByUserIdOrderByCreatedAtDesc(userId)
+                .stream()
+                .map(interestArtist -> {
+
+                    Artist artist = artistRepository
+                            .findById(interestArtist.getArtistId())
+                            .orElseThrow(() ->
+                                    new IllegalStateException(
+                                            "존재하지 않는 아티스트입니다."
+                                    )
+                            );
+
+                    return InterestArtistResponse.builder()
+                            .id(artist.getId())
+                            .name(artist.getName())
+                            .profileImage(artist.getProfileImageUrl())
+                            .genre(artist.getGenrePrimary())
+                            .build();
+                })
+                .toList();
     }
 
     // 관심 아티스트 추가

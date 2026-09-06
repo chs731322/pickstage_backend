@@ -1,9 +1,12 @@
 package com.pickstage.backend.controller;
 
 import com.pickstage.backend.dto.ArtistDetailResponse;
+import com.pickstage.backend.dto.InterestArtistResponse;
 import com.pickstage.backend.global.response.ApiResponse;
 import com.pickstage.backend.service.ArtistService;
 import com.pickstage.backend.service.InterestArtistService;
+
+import java.util.List;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -20,6 +23,19 @@ public class ArtistController {
     public ArtistController(ArtistService artistService, InterestArtistService interestArtistService) {
         this.artistService = artistService;
         this.interestArtistService = interestArtistService;
+    }
+
+    // 내 관심 아티스트 목록 조회
+    @GetMapping("/interests")
+    public ResponseEntity<ApiResponse<List<InterestArtistResponse>>> getMyInterestArtists(
+            @AuthenticationPrincipal Long userId) {
+
+        List<InterestArtistResponse> result =
+                interestArtistService.getMyInterestArtists(userId);
+
+        return ResponseEntity.ok(
+                ApiResponse.success(result)
+        );
     }
 
     // 아티스트 상세 조회

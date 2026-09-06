@@ -62,10 +62,22 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // 인증 없이 접근 가능한 URL
                         .requestMatchers("/api/auth/**", "/api/users/check-nickname").permitAll()
+
                         // 로그인 필요 (개인화된 추천이라 본인 관심 아티스트 기준으로 조회해야 함)
                         .requestMatchers(HttpMethod.GET, "/api/festivals/recommendations").authenticated()
-                        .requestMatchers(HttpMethod.GET, "/api/festivals/**", "/api/venues/**", "/api/artists/**",
-                                "/api/posts/**", "/api/notices/**", "/api/faqs/**")
+
+                        // 로그인 필요 (내 관심 아티스트 목록 조회)
+                        .requestMatchers(HttpMethod.GET, "/api/artists/interests").authenticated()
+
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/festivals/**",
+                                "/api/venues/**",
+                                "/api/artists/**",
+                                "/api/posts/**",
+                                "/api/notices/**",
+                                "/api/faqs/**"
+                        )
                         .permitAll()
 
                         // 나머지는 로그인 필요 (관심 아티스트 추가/삭제 등 POST/DELETE 포함)
