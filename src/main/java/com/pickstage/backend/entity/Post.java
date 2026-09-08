@@ -38,6 +38,6 @@ public class Post {
     private LocalDateTime deletedAt;
 
     public enum Category {
-        companion, lost, free
+        companion, lost, free, review, goods
     }
 }
