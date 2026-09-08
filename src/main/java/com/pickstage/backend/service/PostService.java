@@ -21,6 +21,7 @@ import com.pickstage.backend.repository.UserRepository;
 import com.pickstage.backend.repository.CommentRepository;
 import com.pickstage.backend.dto.CommentResponse;
 import com.pickstage.backend.repository.PostImageRepository;
+import com.pickstage.backend.repository.PostLikeRepository;
 
 @Service
 public class PostService {
@@ -29,15 +30,17 @@ public class PostService {
     private final UserRepository userRepository;
     private final CommentRepository commentRepository;
     private final PostImageRepository postImageRepository;
+    private final PostLikeRepository postLikeRepository;
 
     public PostService(PostRepository postRepository, FestivalRepository festivalRepository,
             UserRepository userRepository, CommentRepository commentRepository,
-            PostImageRepository postImageRepository) {
+            PostImageRepository postImageRepository, PostLikeRepository postLikeRepository) {
         this.postRepository = postRepository;
         this.festivalRepository = festivalRepository;
         this.userRepository = userRepository;
         this.commentRepository = commentRepository;
         this.postImageRepository = postImageRepository;
+        this.postLikeRepository = postLikeRepository;
     }
 
     // 게시글 목록 조회
@@ -53,13 +56,14 @@ public class PostService {
                         .festivalId(post.getFestivalId())
                         .festivalTitle(getFestivalTitle(post.getFestivalId()))
                         .viewCount(post.getViewCount())
+                        .likeCount(post.getLikeCount())
                         .createdAt(post.getCreatedAt())
                         .build());
     }
 
     // 게시글 상세 조회
     @Transactional
-    public PostDetailResponse getPost(Long postId) {
+    public PostDetailResponse getPost(Long postId, Long userId) {
         Post post = findVisiblePost(postId);
 
         post.setViewCount(post.getViewCount() + 1);
@@ -74,6 +78,8 @@ public class PostService {
                 .festivalId(post.getFestivalId())
                 .festivalTitle(getFestivalTitle(post.getFestivalId()))
                 .viewCount(post.getViewCount())
+                .likeCount(post.getLikeCount())
+                .liked(userId != null && postLikeRepository.existsByPostIdAndUserId(postId, userId))
                 .createdAt(post.getCreatedAt())
                 .updatedAt(post.getUpdatedAt())
                 .comments(commentRepository.findByPostIdAndDeletedAtIsNullOrderByCreatedAtAsc(postId).stream()
@@ -182,6 +188,24 @@ public class PostService {
 
         Post post = findVisiblePost(postId);
         post.setDeletedAt(LocalDateTime.now());
+        postRepository.save(post);
+    }
+
+    // 좋아요 수 증가
+    @Transactional
+    public void incrementLikeCount(Long postId) {
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new IllegalStateException("존재하지 않는 게시글입니다."));
+        post.incrementLikeCount();
+        postRepository.save(post);
+    }
+
+    // 좋아요 수 감소
+    @Transactional
+    public void decrementLikeCount(Long postId) {
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new IllegalStateException("존재하지 않는 게시글입니다."));
+        post.decrementLikeCount();
         postRepository.save(post);
     }
 

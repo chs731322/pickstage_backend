@@ -33,9 +33,21 @@ public class Post {
     private String title;
     private String content;
     private int viewCount;
+
+    @Builder.Default
+    private int likeCount = 0;
+
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private LocalDateTime deletedAt;
+
+    public void incrementLikeCount() {
+        this.likeCount++;
+    }
+
+    public void decrementLikeCount() {
+        this.likeCount--;
+    }
 
     public enum Category {
         companion, lost, free, review, goods

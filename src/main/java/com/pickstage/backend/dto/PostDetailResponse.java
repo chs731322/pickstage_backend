@@ -17,6 +17,8 @@ public class PostDetailResponse {
     private Long festivalId;
     private String festivalTitle;
     private int viewCount;
+    private int likeCount;
+    private boolean liked;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private List<CommentResponse> comments;

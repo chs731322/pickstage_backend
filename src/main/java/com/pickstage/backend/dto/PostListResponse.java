@@ -15,5 +15,6 @@ public class PostListResponse {
     private Long festivalId;
     private String festivalTitle;
     private int viewCount;
+    private int likeCount;
     private LocalDateTime createdAt;
 }

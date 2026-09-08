@@ -42,8 +42,9 @@ public class PostController {
 
     // 게시글 상세 조회
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<PostDetailResponse>> getPost(@PathVariable Long id) {
-        PostDetailResponse result = postService.getPost(id);
+    public ResponseEntity<ApiResponse<PostDetailResponse>> getPost(
+            @AuthenticationPrincipal Long userId, @PathVariable Long id) {
+        PostDetailResponse result = postService.getPost(id, userId);
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 
