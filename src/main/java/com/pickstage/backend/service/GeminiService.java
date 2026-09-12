@@ -24,10 +24,10 @@ public class GeminiService {
     private final RestClient restClient;
     private final ObjectMapper objectMapper;
 
-    @Value("${gemini.api-key}")
+    @Value("${gemini.api-key:}")
     private String apiKey;
 
-    @Value("${gemini.model}")
+    @Value("${gemini.model:gemini-3.5-flash-lite}")
     private String model;
 
     public GeminiService(ObjectMapper objectMapper) {
@@ -37,6 +37,10 @@ public class GeminiService {
 
     // 후기 텍스트 목록에서 키워드 하이라이트 추출
     public List<ReviewKeywordHighlight> extractHighlights(String targetLabel, List<String> reviewTexts) {
+
+        if (apiKey == null || apiKey.isBlank()) {
+            throw new IllegalStateException("AI 요약 기능이 아직 설정되지 않았습니다.");
+        }
 
         Map<String, Object> requestBody = Map.of(
                 "contents", List.of(Map.of(
