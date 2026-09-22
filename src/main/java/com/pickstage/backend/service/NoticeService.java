@@ -31,13 +31,15 @@ public class NoticeService {
 
     // 공지사항 목록 조회
     @Transactional(readOnly = true)
-    public PageResponse<NoticeListResponse> getNotices(int page, int size) {
+    public PageResponse<NoticeListResponse> getNotices(int page, int size, String keyword) {
         if (page < 0 || size <= 0) {
             throw new IllegalArgumentException("올바르지 않은 요청입니다.");
         }
 
+        String normalizedKeyword = (keyword == null || keyword.isBlank()) ? null : keyword.trim();
+
         Pageable pageable = PageRequest.of(page, size);
-        Page<Notice> notices = noticeRepository.findAllOrderByPinnedAndCreatedAtDesc(pageable);
+        Page<Notice> notices = noticeRepository.findByFilters(normalizedKeyword, pageable);
 
         Page<NoticeListResponse> content = notices.map(notice -> NoticeListResponse.builder()
                 .id(notice.getId())

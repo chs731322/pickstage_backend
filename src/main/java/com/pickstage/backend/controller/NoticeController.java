@@ -27,8 +27,9 @@ public class NoticeController {
     @GetMapping
     public ResponseEntity<ApiResponse<PageResponse<NoticeListResponse>>> getNotices(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
-        PageResponse<NoticeListResponse> response = noticeService.getNotices(page, size);
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String keyword) {
+        PageResponse<NoticeListResponse> response = noticeService.getNotices(page, size, keyword);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
