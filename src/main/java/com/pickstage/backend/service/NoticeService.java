@@ -2,6 +2,8 @@ package com.pickstage.backend.service;
 
 import java.time.LocalDateTime;
 
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -29,7 +31,8 @@ public class NoticeService {
         this.userRepository = userRepository;
     }
 
-    // 공지사항 목록 조회
+    // 공지사항 목록 조회 (등록/수정/삭제 전까지는 캐시에서 바로 응답)
+    @Cacheable(value = "notices", key = "#page + '-' + #size + '-' + #keyword")
     @Transactional(readOnly = true)
     public PageResponse<NoticeListResponse> getNotices(int page, int size, String keyword) {
         if (page < 0 || size <= 0) {
@@ -70,6 +73,7 @@ public class NoticeService {
     }
 
     // 관리자 공지사항 등록
+    @CacheEvict(value = "notices", allEntries = true)
     @Transactional
     public Long createNotice(Long requesterId, AdminNoticeRequest request) {
         requireAdmin(requesterId);
@@ -87,6 +91,7 @@ public class NoticeService {
     }
 
     // 관리자 공지사항 수정
+    @CacheEvict(value = "notices", allEntries = true)
     @Transactional
     public void updateNotice(Long requesterId, Long id, AdminNoticeRequest request) {
         requireAdmin(requesterId);
@@ -109,6 +114,7 @@ public class NoticeService {
     }
 
     // 관리자 공지사항 삭제
+    @CacheEvict(value = "notices", allEntries = true)
     @Transactional
     public void deleteNotice(Long requesterId, Long id) {
         requireAdmin(requesterId);
