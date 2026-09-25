@@ -16,13 +16,16 @@ public interface FestivalArtistRepository extends JpaRepository<FestivalArtist, 
         List<FestivalArtist> findByFestivalId(@Param("festivalId") Long festivalId);
 
         // 특정 아티스트의 예정된 공연 목록 (시작일이 오늘 이후인 것만)
-        @Query("SELECT fa FROM FestivalArtist fa " +
-                        "WHERE fa.artist.id = :artistId AND fa.festival.startDate >= :today " +
-                        "ORDER BY fa.festival.startDate ASC")
+        // festival을 JOIN FETCH: 서비스에 트랜잭션이 없어(open-in-view=false) 지연 로딩 시 LazyInitializationException 방지
+        @Query("SELECT fa FROM FestivalArtist fa JOIN FETCH fa.festival f " +
+                        "WHERE fa.artist.id = :artistId AND f.startDate >= :today " +
+                        "ORDER BY f.startDate ASC")
         List<FestivalArtist> findUpcomingByArtistId(
                         @Param("artistId") Long artistId,
                         @Param("today") LocalDate today);
 
+        @Query("SELECT fa FROM FestivalArtist fa JOIN FETCH fa.festival f JOIN FETCH fa.artist " +
+                        "WHERE fa.artist.id IN :artistIds AND f.endDate >= :today")
         List<FestivalArtist> findByArtist_IdInAndFestival_EndDateGreaterThanEqual(
-                        List<Long> artistIds, LocalDate today);
+                        @Param("artistIds") List<Long> artistIds, @Param("today") LocalDate today);
 }
