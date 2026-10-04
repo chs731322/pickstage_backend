@@ -16,6 +16,8 @@ public class CorsConfig {
 
         config.setAllowCredentials(true);
         config.addAllowedOrigin("http://localhost:5173"); // Vite 기본 포트
+        config.addAllowedOrigin("https://p1cksta9e.com");
+        config.addAllowedOrigin("https://www.p1cksta9e.com");
         config.addAllowedHeader("*");
         config.addAllowedMethod("*");
 
