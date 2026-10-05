@@ -37,7 +37,7 @@ public class EmailService {
     @Value("${spring.mail.username}")
     private String senderEmail;
 
-    @Value("${app.frontend-url:http://localhost:3000}")
+    @Value("${app.frontend-url:http://localhost:5173}")
     private String frontendUrl;
 
     // Railway Trial/Hobby 플랜은 SMTP(25/465/587)가 막혀 있어, 키가 있으면 HTTPS API(Resend)로 발송하고
