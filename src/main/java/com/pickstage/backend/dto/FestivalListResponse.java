@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Getter
 @Builder
@@ -26,4 +27,7 @@ public class FestivalListResponse {
 
     private String venueName;
     private int bookmarkCount;
+    // 티켓 오픈 일시와 첫 번째 티켓 이름 (홈의 티켓 오픈 일정용. ticketLabel은 ticket_open 계열 정렬에서만 채움)
+    private LocalDateTime ticketOpenAt;
+    private String ticketLabel;
 }

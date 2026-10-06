@@ -3,6 +3,7 @@ package com.pickstage.backend.repository;
 import com.pickstage.backend.entity.Festival;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -18,11 +19,15 @@ public interface FestivalRepository extends JpaRepository<Festival, Long> {
         @Query("SELECT f FROM Festival f WHERE " +
                         "(:region IS NULL OR f.region = :region) AND " +
                         "(:genre IS NULL OR f.genre = :genre) AND " +
-                        "(:keyword IS NULL OR f.title LIKE %:keyword%)")
+                        "(:keyword IS NULL OR f.title LIKE %:keyword%) AND " +
+                        "(:openAfter IS NULL OR f.ticketOpenDate > :openAfter) AND " +
+                        "(:openBefore IS NULL OR f.ticketOpenDate <= :openBefore)")
         Page<Festival> findByFilters(
                         @Param("region") String region,
                         @Param("genre") String genre,
                         @Param("keyword") String keyword,
+                        @Param("openAfter") LocalDateTime openAfter,
+                        @Param("openBefore") LocalDateTime openBefore,
                         Pageable pageable);
 
         // 해당 공연장에서 예정된 페스티벌

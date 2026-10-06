@@ -34,8 +34,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @Service
@@ -75,6 +77,8 @@ public class FestivalService {
         }
 
         // 공연 목록 조회
+        // sort: latest(기본) / popular / ticket_open(앞으로 열릴 티켓, 임박순) / ticket_open_recent(이미 열린 티켓, 최근순)
+        @Transactional(readOnly = true)
         public Page<FestivalListResponse> getFestivals(
                         String region, String genre, String keyword,
                         String sort, int page, int size) {
@@ -83,27 +87,60 @@ public class FestivalService {
                         throw new IllegalArgumentException("올바르지 않은 요청입니다.");
                 }
 
-                Sort sorting = switch (sort != null ? sort : "latest") {
+                String sortKey = sort != null ? sort : "latest";
+                LocalDateTime now = LocalDateTime.now();
+                LocalDateTime openAfter = null;
+                LocalDateTime openBefore = null;
+
+                Sort sorting = switch (sortKey) {
                         case "popular" -> Sort.by(Sort.Direction.DESC, "bookmarkCount");
-                        case "ticket_open" -> Sort.by(Sort.Direction.ASC, "ticketOpenDate");
+                        case "ticket_open" -> {
+                                openAfter = now; // 오픈일이 없거나 이미 지난 공연은 제외
+                                yield Sort.by(Sort.Direction.ASC, "ticketOpenDate");
+                        }
+                        case "ticket_open_recent" -> {
+                                openBefore = now; // 이미 오픈한 공연 중 최근에 오픈한 순
+                                yield Sort.by(Sort.Direction.DESC, "ticketOpenDate");
+                        }
                         default -> Sort.by(Sort.Direction.DESC, "createdAt");
                 };
 
                 Pageable pageable = PageRequest.of(page, size, sorting);
 
-                return festivalRepository.findByFilters(region, genre, keyword, pageable)
-                                .map(festival -> FestivalListResponse.builder()
-                                                .id(festival.getId())
-                                                .title(festival.getTitle())
-                                                .posterImage(festival.getPosterUrl())
-                                                .startDate(festival.getStartDate())
-                                                .endDate(festival.getEndDate())
-                                                .region(festival.getRegion())
-                                                .genre(festival.getGenre())
-                                                .isFestival(true)
-                                                .venueName(festival.getVenueName())
-                                                .bookmarkCount(festival.getBookmarkCount())
-                                                .build());
+                Page<Festival> festivals = festivalRepository.findByFilters(region, genre, keyword, openAfter, openBefore,
+                                pageable);
+
+                Map<Long, String> firstTicketLabels = sortKey.startsWith("ticket_open")
+                                ? firstTicketLabels(festivals.getContent())
+                                : Map.of();
+
+                return festivals.map(festival -> FestivalListResponse.builder()
+                                .id(festival.getId())
+                                .title(festival.getTitle())
+                                .posterImage(festival.getPosterUrl())
+                                .startDate(festival.getStartDate())
+                                .endDate(festival.getEndDate())
+                                .region(festival.getRegion())
+                                .genre(festival.getGenre())
+                                .isFestival(true)
+                                .venueName(festival.getVenueName())
+                                .bookmarkCount(festival.getBookmarkCount())
+                                .ticketOpenAt(festival.getTicketOpenDate())
+                                .ticketLabel(firstTicketLabels.get(festival.getId()))
+                                .build());
+        }
+
+        // 공연별 첫 번째(sortOrder가 가장 낮은) 티켓 이름을 한 번의 쿼리로 가져온다
+        private Map<Long, String> firstTicketLabels(List<Festival> festivals) {
+                if (festivals.isEmpty()) {
+                        return Map.of();
+                }
+                List<Long> ids = festivals.stream().map(Festival::getId).toList();
+                Map<Long, String> labels = new HashMap<>();
+                for (FestivalTicket ticket : festivalTicketRepository.findByFestivalIdInOrderBySortOrderAsc(ids)) {
+                        labels.putIfAbsent(ticket.getFestival().getId(), ticket.getLabel());
+                }
+                return labels;
         }
 
         // 공연 상세 조회
