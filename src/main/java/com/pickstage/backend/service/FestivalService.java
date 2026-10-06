@@ -6,9 +6,12 @@ import com.pickstage.backend.dto.FestivalCalendarResponse;
 import com.pickstage.backend.dto.FestivalDetailResponse;
 import com.pickstage.backend.dto.FestivalListResponse;
 import com.pickstage.backend.dto.TicketInfo;
+import com.pickstage.backend.dto.LineupRequest;
 import com.pickstage.backend.dto.TicketRequest;
 import com.pickstage.backend.dto.VenueInfo;
+import com.pickstage.backend.entity.Artist;
 import com.pickstage.backend.entity.Festival;
+import com.pickstage.backend.entity.FestivalArtist;
 import com.pickstage.backend.entity.FestivalImage;
 import com.pickstage.backend.entity.FestivalTicket;
 import com.pickstage.backend.entity.User;
@@ -31,7 +34,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Service
 public class FestivalService {
@@ -45,6 +50,7 @@ public class FestivalService {
         private final BookmarkRepository bookmarkRepository;
         private final NotificationRepository notificationRepository;
         private final PostRepository postRepository;
+        private final ArtistMatchService artistMatchService;
 
         public FestivalService(FestivalRepository festivalRepository,
                         FestivalImageRepository festivalImageRepository,
@@ -54,7 +60,8 @@ public class FestivalService {
                         VenueRepository venueRepository,
                         BookmarkRepository bookmarkRepository,
                         NotificationRepository notificationRepository,
-                        PostRepository postRepository) {
+                        PostRepository postRepository,
+                        ArtistMatchService artistMatchService) {
                 this.festivalRepository = festivalRepository;
                 this.festivalImageRepository = festivalImageRepository;
                 this.festivalArtistRepository = festivalArtistRepository;
@@ -64,6 +71,7 @@ public class FestivalService {
                 this.bookmarkRepository = bookmarkRepository;
                 this.notificationRepository = notificationRepository;
                 this.postRepository = postRepository;
+                this.artistMatchService = artistMatchService;
         }
 
         // 공연 목록 조회
@@ -241,6 +249,7 @@ public class FestivalService {
 
                 saveImages(saved, request.getImages());
                 saveTickets(saved, request.getTickets());
+                saveLineup(saved, request.getLineup());
 
                 return saved.getId();
         }
@@ -296,6 +305,10 @@ public class FestivalService {
                         festivalTicketRepository.deleteByFestivalId(festivalId);
                         saveTickets(festival, request.getTickets());
                 }
+                if (request.getLineup() != null) {
+                        festivalArtistRepository.deleteByFestivalId(festivalId);
+                        saveLineup(festival, request.getLineup());
+                }
         }
 
         // 관리자 공연 삭제 (하드 삭제)
@@ -315,6 +328,32 @@ public class FestivalService {
 
                 // festival_artists / festival_tickets는 FK가 CASCADE라 자동으로 같이 삭제됨
                 festivalRepository.delete(festival);
+        }
+
+        // 라인업 저장: 기존 아티스트와 매칭하고, 없으면 새로 만든다 (같은 아티스트는 한 번만)
+        private void saveLineup(Festival festival, List<LineupRequest> lineup) {
+                if (lineup == null || lineup.isEmpty()) {
+                        return;
+                }
+                Set<Long> seen = new HashSet<>();
+                int order = 0;
+                for (LineupRequest entry : lineup) {
+                        if (entry.getArtistName() == null || entry.getArtistName().isBlank()) {
+                                continue;
+                        }
+                        Artist artist = artistMatchService.findOrCreate(entry.getArtistName());
+                        if (!seen.add(artist.getId())) {
+                                continue;
+                        }
+                        festivalArtistRepository.save(FestivalArtist.builder()
+                                        .festival(festival)
+                                        .artist(artist)
+                                        .isHeadliner(false)
+                                        .performanceDate(entry.getPerformanceDate())
+                                        .billingOrder(++order)
+                                        .source("admin")
+                                        .build());
+                }
         }
 
         private void requireAdmin(Long userId) {

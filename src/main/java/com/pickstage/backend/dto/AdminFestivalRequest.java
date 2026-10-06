@@ -21,4 +21,5 @@ public class AdminFestivalRequest {
     private String posterImage;
     private List<String> images;
     private List<TicketRequest> tickets;
+    private List<LineupRequest> lineup;
 }

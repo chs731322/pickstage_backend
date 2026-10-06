@@ -10,6 +10,11 @@ import java.util.List;
 
 public interface FestivalArtistRepository extends JpaRepository<FestivalArtist, Long> {
 
+        // 공연 수정 시 라인업 교체용
+        @org.springframework.data.jpa.repository.Modifying
+        @Query("DELETE FROM FestivalArtist fa WHERE fa.festival.id = :festivalId")
+        void deleteByFestivalId(@Param("festivalId") Long festivalId);
+
         // 특정 공연(festival)에 출연하는 아티스트 목록
         // artist를 JOIN FETCH해서 상세 조회 시 아티스트 수만큼 추가 쿼리(N+1)가 나가는 걸 방지
         @Query("SELECT fa FROM FestivalArtist fa JOIN FETCH fa.artist WHERE fa.festival.id = :festivalId")

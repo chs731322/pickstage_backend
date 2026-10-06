@@ -60,6 +60,36 @@ public class GeminiService {
                                                         "enum", List.of("positive", "negative", "neutral"))),
                                         "required", List.of("keyword", "count", "sentiment")))));
 
+        String json = callForText(requestBody);
+        return Arrays.asList(objectMapper.readValue(json, ReviewKeywordHighlight[].class));
+    }
+
+    // 공연 등록 초안 등, 스키마를 지정해 JSON 문자열을 받아오는 범용 호출 (이미지는 선택)
+    public String generateJson(String prompt, Map<String, Object> responseSchema,
+            String imageBase64, String imageMimeType) {
+
+        if (apiKey == null || apiKey.isBlank()) {
+            throw new IllegalStateException("AI 기능이 아직 설정되지 않았습니다.");
+        }
+
+        List<Map<String, Object>> parts = new java.util.ArrayList<>();
+        parts.add(Map.of("text", prompt));
+        if (imageBase64 != null && !imageBase64.isBlank()) {
+            parts.add(Map.of("inline_data", Map.of("mime_type", imageMimeType, "data", imageBase64)));
+        }
+
+        Map<String, Object> requestBody = Map.of(
+                "contents", List.of(Map.of("role", "user", "parts", parts)),
+                "generationConfig", Map.of(
+                        "responseMimeType", "application/json",
+                        "responseSchema", responseSchema,
+                        "temperature", 0));
+
+        return callForText(requestBody);
+    }
+
+    // Gemini generateContent 호출 후 첫 후보의 텍스트를 반환
+    private String callForText(Map<String, Object> requestBody) {
         try {
             GeminiGenerateContentResponse response = restClient.post()
                     .uri(GEMINI_URL, model, apiKey)
@@ -74,8 +104,7 @@ public class GeminiService {
                 throw new RuntimeException("AI 서버와 통신 중 오류가 발생했습니다.");
             }
 
-            String json = response.getCandidates().get(0).getContent().getParts().get(0).getText();
-            return Arrays.asList(objectMapper.readValue(json, ReviewKeywordHighlight[].class));
+            return response.getCandidates().get(0).getContent().getParts().get(0).getText();
 
         } catch (RestClientResponseException e) {
             throw new RuntimeException("AI 서버와 통신 중 오류가 발생했습니다.");

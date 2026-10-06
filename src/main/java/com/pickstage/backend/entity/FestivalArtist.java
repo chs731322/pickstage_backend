@@ -30,4 +30,11 @@ public class FestivalArtist {
 
     @Column(name = "performance_date")
     private LocalDate performanceDate;
+
+    // 라인업 표기 순서
+    @Column(name = "billing_order")
+    private Integer billingOrder;
+
+    // 등록 경로 (admin / excel_lineup 등)
+    private String source;
 }

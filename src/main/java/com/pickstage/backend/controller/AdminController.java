@@ -17,11 +17,14 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.pickstage.backend.dto.AdminFAQRequest;
 import com.pickstage.backend.dto.AdminFestivalRequest;
+import com.pickstage.backend.dto.FestivalDraftRequest;
+import com.pickstage.backend.dto.FestivalDraftResponse;
 import com.pickstage.backend.dto.AdminNoticeRequest;
 import com.pickstage.backend.dto.AdminUserResponse;
 import com.pickstage.backend.dto.PageResponse;
 import com.pickstage.backend.dto.RoleUpdateRequest;
 import com.pickstage.backend.global.response.ApiResponse;
+import com.pickstage.backend.service.FestivalDraftService;
 import com.pickstage.backend.service.FestivalService;
 import com.pickstage.backend.service.NoticeService;
 import com.pickstage.backend.service.PostService;
@@ -36,15 +39,17 @@ public class AdminController {
     private final ReviewService reviewService;
     private final UserService userService;
     private final FestivalService festivalService;
+    private final FestivalDraftService festivalDraftService;
     private final NoticeService noticeService;
     private final FAQService faqService;
 
     public AdminController(PostService postService, ReviewService reviewService, UserService userService,
-                           FestivalService festivalService, NoticeService noticeService, FAQService faqService) {
+                           FestivalService festivalService, NoticeService noticeService, FAQService faqService, FestivalDraftService festivalDraftService) {
         this.postService = postService;
         this.reviewService = reviewService;
         this.userService = userService;
         this.festivalService = festivalService;
+        this.festivalDraftService = festivalDraftService;
         this.noticeService = noticeService;
         this.faqService = faqService;
     }
@@ -108,6 +113,13 @@ public class AdminController {
         Long festivalId = festivalService.createFestival(userId, request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(Map.of("id", festivalId), "공연이 등록되었습니다."));
+    }
+
+    // 관리자 공연 등록 초안 생성 (AI): 공고 텍스트/포스터 이미지 -> 초안. 저장은 하지 않는다.
+    @PostMapping("/festivals/ai-draft")
+    public ResponseEntity<ApiResponse<FestivalDraftResponse>> createFestivalDraft(
+            @AuthenticationPrincipal Long userId, @RequestBody FestivalDraftRequest request) {
+        return ResponseEntity.ok(ApiResponse.success(festivalDraftService.createDraft(userId, request)));
     }
 
     // 관리자 공연 수정

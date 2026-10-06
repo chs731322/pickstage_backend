@@ -18,6 +18,10 @@ public class Artist {
 
     private String name;
 
+    // 공백 제거 + 소문자 (중복 아티스트 방지용 UNIQUE 키)
+    @Column(name = "normalized_name")
+    private String normalizedName;
+
     @Column(name = "english_name")
     private String englishName;
 
