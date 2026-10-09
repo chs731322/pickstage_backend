@@ -8,7 +8,7 @@
 
 | 분류 | 기술 |
 |---|---|
-| Language | Java 17 |
+| Language | Java 21 |
 | Framework | Spring Boot 4.1.0 |
 | ORM | Spring Data JPA / Hibernate |
 | Database | MySQL 8.0 (AWS EC2) |
