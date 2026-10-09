@@ -33,9 +33,10 @@ public class FestivalController {
     public ResponseEntity<ApiResponse<PageResponse<FestivalListResponse>>> getFestivals(
             @RequestParam(required = false) String region, @RequestParam(required = false) String genre,
             @RequestParam(required = false) String keyword, @RequestParam(defaultValue = "latest") String sort,
+            @RequestParam(defaultValue = "false") boolean upcomingOnly,
             @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size) {
 
-        Page<FestivalListResponse> result = festivalService.getFestivals(region, genre, keyword, sort, page, size);
+        Page<FestivalListResponse> result = festivalService.getFestivals(region, genre, keyword, sort, upcomingOnly, page, size);
 
         return ResponseEntity.ok(ApiResponse.success(PageResponse.of(result)));
     }

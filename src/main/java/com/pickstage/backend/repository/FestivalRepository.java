@@ -21,13 +21,15 @@ public interface FestivalRepository extends JpaRepository<Festival, Long> {
                         "(:genre IS NULL OR f.genre = :genre) AND " +
                         "(:keyword IS NULL OR f.title LIKE %:keyword%) AND " +
                         "(:openAfter IS NULL OR f.ticketOpenDate > :openAfter) AND " +
-                        "(:openBefore IS NULL OR f.ticketOpenDate <= :openBefore)")
+                        "(:openBefore IS NULL OR f.ticketOpenDate <= :openBefore) AND " +
+                        "(:endAfter IS NULL OR f.endDate >= :endAfter)")
         Page<Festival> findByFilters(
                         @Param("region") String region,
                         @Param("genre") String genre,
                         @Param("keyword") String keyword,
                         @Param("openAfter") LocalDateTime openAfter,
                         @Param("openBefore") LocalDateTime openBefore,
+                        @Param("endAfter") LocalDate endAfter,
                         Pageable pageable);
 
         // 해당 공연장에서 예정된 페스티벌
