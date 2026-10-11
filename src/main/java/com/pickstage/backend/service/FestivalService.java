@@ -77,7 +77,7 @@ public class FestivalService {
         }
 
         // 공연 목록 조회
-        // sort: latest(기본) / popular / start(시작 임박순) / ticket_open(앞으로 열릴 티켓, 임박순) / ticket_open_recent(이미 열린 티켓, 최근순)
+        // sort: latest(기본) / popular(끝난 공연은 뒤로) / start(시작 임박순) / ticket_open(앞으로 열릴 티켓, 임박순) / ticket_open_recent(이미 열린 티켓, 최근순)
         // upcomingOnly: true면 이미 끝난 공연(종료일이 오늘 이전)은 제외 (메인 배너, 티켓 오픈 일정용)
         // outdoor: true면 장소 이름에 공원·해변·광장 등이 들어간 야외 공연만
         @Transactional(readOnly = true)
@@ -95,7 +95,10 @@ public class FestivalService {
                 LocalDateTime openBefore = null;
 
                 Sort sorting = switch (sortKey) {
-                        case "popular" -> Sort.by(Sort.Direction.DESC, "bookmarkCount");
+                        // 인기순: 이미 끝난 공연은 뒤로 보내고, 그 안에서 찜 수 -> 조회 수 순
+                        case "popular" -> org.springframework.data.jpa.domain.JpaSort
+                                        .unsafe(Sort.Direction.ASC, "(CASE WHEN f.endDate < CURRENT_DATE THEN 1 ELSE 0 END)")
+                                        .and(Sort.by(Sort.Direction.DESC, "bookmarkCount", "viewCount"));
                         case "start" -> Sort.by(Sort.Direction.ASC, "startDate"); // 시작이 임박한 순
                         case "ticket_open" -> {
                                 openAfter = now; // 오픈일이 없거나 이미 지난 공연은 제외
