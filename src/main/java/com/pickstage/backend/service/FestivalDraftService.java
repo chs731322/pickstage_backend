@@ -42,7 +42,7 @@ public class FestivalDraftService {
     private static final int MAX_TEXT_LENGTH = 30_000;
     private static final int MAX_IMAGE_BASE64_LENGTH = 7_000_000; // 약 5MB
     private static final Set<String> IMAGE_TYPES = Set.of("image/jpeg", "image/png", "image/webp");
-    private static final List<String> GENRE_LIST = List.of("rock", "indie_band", "hiphop", "jazz", "general_music", "exception");
+    private static final List<String> GENRE_LIST = List.of("rock", "indie_band", "hiphop", "jazz", "edm", "general_music", "exception");
     private static final Set<String> GENRES = Set.copyOf(GENRE_LIST);
     private static final List<String> REGIONS = List.of("서울", "경기", "인천", "부산", "대구", "대전", "광주", "울산",
             "세종", "강원", "충북", "충남", "전북", "전남", "경북", "경남", "제주");
@@ -154,7 +154,7 @@ public class FestivalDraftService {
         sb.append("- 자료에 실제로 적힌 내용만 쓰고, 없는 정보는 절대 지어내지 말고 null로 둬. (특히 날짜, 가격, 링크)\n");
         sb.append("- title은 공식 공연명(연도 포함 표기가 있으면 그대로)을 쓰고, description은 소개 문구를 900자 이내로 요약해.\n");
         sb.append("- startDate/endDate는 공연 전체의 첫날/마지막 날(YYYY-MM-DD). 하루짜리면 둘이 같아.\n");
-        sb.append("- genre는 다음 중 하나: rock(록/메탈 중심), indie_band(인디/밴드/펑크 중심), hiphop(힙합/랩 중심), jazz(재즈 중심), general_music(아이돌·EDM·대중음악 등 종합), exception(클래식 등 그 외).\n");
+        sb.append("- genre는 다음 중 하나: rock(록/메탈 중심), indie_band(인디/밴드/펑크 중심), hiphop(힙합/랩 중심), jazz(재즈 중심), edm(EDM·DJ 중심), general_music(아이돌·대중음악 등 종합), exception(클래식 등 그 외).\n");
         sb.append("- region은 장소가 있는 시/도의 짧은 이름이야.\n");
         sb.append("- tickets는 예매처(vendorName)별·권종(label)별로 나눠. price는 원 단위 숫자, openAt은 예매 오픈 일시(YYYY-MM-DDTHH:mm:ss).\n");
         sb.append("- lineup은 실제 출연하는 아티스트만, 적힌 순서대로. 자료에 적힌 표기를 그대로 쓰고 번역하거나 한글로 음역하지 마(영문 이름은 영문 그대로). 한글 이름과 영문 이름이 같이 적혀 있을 때만 한글 이름을 써. SNS 아이디, 소속, 팀·스테이지 이름, TBA 같은 안내 문구는 빼.\n");
