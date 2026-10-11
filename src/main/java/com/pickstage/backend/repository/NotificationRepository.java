@@ -23,4 +23,7 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
 
     // 관리자 공연 삭제 시 해당 공연 관련 알림 일괄 삭제
     void deleteByFestivalId(Long festivalId);
+
+    // 회원 탈퇴 시 해당 사용자의 알림 일괄 삭제
+    void deleteByUserId(Long userId);
 }

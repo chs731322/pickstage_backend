@@ -23,4 +23,7 @@ public interface InterestArtistRepository extends JpaRepository<InterestArtist, 
 
     // 내 관심 아티스트 목록 최신순 조회
     List<InterestArtist> findByUserIdOrderByCreatedAtDesc(Long userId);
+
+    // 회원 탈퇴 시 해당 사용자의 관심 아티스트 일괄 삭제
+    void deleteByUserId(Long userId);
 }

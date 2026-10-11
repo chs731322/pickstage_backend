@@ -7,6 +7,11 @@ import com.pickstage.backend.dto.PageResponse;
 import com.pickstage.backend.dto.PasswordChangeRequest;
 import com.pickstage.backend.dto.RoleUpdateRequest;
 import com.pickstage.backend.entity.User;
+import com.pickstage.backend.repository.ChecklistRepository;
+import com.pickstage.backend.repository.EmailVerificationRepository;
+import com.pickstage.backend.repository.InterestArtistRepository;
+import com.pickstage.backend.repository.NotificationRepository;
+import com.pickstage.backend.repository.PasswordResetTokenRepository;
 import com.pickstage.backend.repository.RefreshTokenRepository;
 import com.pickstage.backend.repository.UserRepository;
 import org.springframework.data.domain.Page;
@@ -22,15 +27,33 @@ public class UserService {
         private final UserRepository userRepository;
         private final RefreshTokenRepository refreshTokenRepository;
         private final PasswordEncoder passwordEncoder;
+        private final PasswordResetTokenRepository passwordResetTokenRepository;
+        private final EmailVerificationRepository emailVerificationRepository;
+        private final InterestArtistRepository interestArtistRepository;
+        private final ChecklistRepository checklistRepository;
+        private final NotificationRepository notificationRepository;
+        private final BookmarkService bookmarkService;
 
         public UserService(
                         UserRepository userRepository,
                         RefreshTokenRepository refreshTokenRepository,
-                        PasswordEncoder passwordEncoder) {
+                        PasswordEncoder passwordEncoder,
+                        PasswordResetTokenRepository passwordResetTokenRepository,
+                        EmailVerificationRepository emailVerificationRepository,
+                        InterestArtistRepository interestArtistRepository,
+                        ChecklistRepository checklistRepository,
+                        NotificationRepository notificationRepository,
+                        BookmarkService bookmarkService) {
 
                 this.userRepository = userRepository;
                 this.refreshTokenRepository = refreshTokenRepository;
                 this.passwordEncoder = passwordEncoder;
+                this.passwordResetTokenRepository = passwordResetTokenRepository;
+                this.emailVerificationRepository = emailVerificationRepository;
+                this.interestArtistRepository = interestArtistRepository;
+                this.checklistRepository = checklistRepository;
+                this.notificationRepository = notificationRepository;
+                this.bookmarkService = bookmarkService;
         }
 
         // 내 정보 조회
@@ -129,11 +152,21 @@ public class UserService {
                                 .orElseThrow(() -> new IllegalStateException(
                                                 "사용자를 찾을 수 없습니다."));
 
-                // 소프트 삭제 처리
+                String oldEmail = user.getEmail();
+
+                // 개인 식별 정보를 지우고 계정 비활성화 (게시글·댓글·리뷰는 "탈퇴한 회원" 이름으로 남는다)
                 user.withdraw();
 
-                // Refresh Token 삭제
+                // 인증·재설정 관련 정보 삭제
                 refreshTokenRepository.deleteByUserId(userId);
+                passwordResetTokenRepository.deleteByUserId(userId);
+                emailVerificationRepository.deleteByEmail(oldEmail);
+
+                // 개인 데이터 삭제: 찜(공연 찜 수도 함께 감소), 관심 아티스트, 체크리스트, 알림
+                bookmarkService.removeAllBookmarks(userId);
+                interestArtistRepository.deleteByUserId(userId);
+                checklistRepository.deleteByUserId(userId);
+                notificationRepository.deleteByUserId(userId);
         }
 
         // 회원 목록 조회

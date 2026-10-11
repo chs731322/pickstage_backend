@@ -1,5 +1,6 @@
 package com.pickstage.backend.global.config;
 
+import com.pickstage.backend.repository.UserRepository;
 import java.io.IOException;
 
 import org.springframework.context.annotation.Bean;
@@ -30,12 +31,15 @@ public class SecurityConfig {
 
     private final JwtProvider jwtProvider;
     private final ObjectMapper objectMapper;
+    private final UserRepository userRepository;
 
     public SecurityConfig(
             JwtProvider jwtProvider,
-            ObjectMapper objectMapper) {
+            ObjectMapper objectMapper,
+            UserRepository userRepository) {
         this.jwtProvider = jwtProvider;
         this.objectMapper = objectMapper;
+        this.userRepository = userRepository;
     }
 
     @Bean
@@ -87,7 +91,7 @@ public class SecurityConfig {
 
                 // JWT 필터 등록
                 .addFilterBefore(
-                        new JwtAuthenticationFilter(jwtProvider),
+                        new JwtAuthenticationFilter(jwtProvider, userRepository),
                         UsernamePasswordAuthenticationFilter.class
                 );
 

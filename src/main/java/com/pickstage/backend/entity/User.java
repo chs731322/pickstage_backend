@@ -63,9 +63,17 @@ public class User {
     }
 
     // 회원 탈퇴
+    // 개인 식별 정보를 지우고 계정을 비활성화한다.
+    // email은 UNIQUE NOT NULL이라 id로 만든 값으로 바꾼다 (같은 이메일로 다시 가입할 수 있게 된다).
     public void withdraw() {
-        this.deletedAt = LocalDateTime.now();
-        this.updatedAt = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now();
+        this.email = "withdrawn-" + this.id + "@deleted.invalid";
+        this.nickname = "탈퇴한 회원";
+        this.passwordHash = null;
+        this.profileImage = null;
+        this.socialId = null;
+        this.deletedAt = now;
+        this.updatedAt = now;
     }
 
     public enum SocialProvider {

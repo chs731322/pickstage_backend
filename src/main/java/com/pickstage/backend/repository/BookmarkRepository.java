@@ -28,4 +28,7 @@ public interface BookmarkRepository extends JpaRepository<Bookmark, Long> {
 
     // 이 공연을 북마크한 사용자들
     List<Bookmark> findByFestivalId(Long festivalId);
+
+    // 회원 탈퇴 시 해당 사용자의 북마크 일괄 삭제
+    void deleteByUserId(Long userId);
 }

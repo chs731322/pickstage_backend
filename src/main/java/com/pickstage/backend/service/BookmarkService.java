@@ -70,6 +70,19 @@ public class BookmarkService {
         festivalService.decrementBookmarkCount(festivalId);
     }
 
+    // 회원 탈퇴: 사용자의 북마크를 모두 지우고 각 공연의 북마크 수를 줄인다
+    @Transactional
+    public void removeAllBookmarks(Long userId) {
+        for (Bookmark bookmark : bookmarkRepository.findByUserId(userId)) {
+            try {
+                festivalService.decrementBookmarkCount(bookmark.getFestivalId());
+            } catch (IllegalStateException e) {
+                // 이미 삭제된 공연이면 건너뛴다
+            }
+        }
+        bookmarkRepository.deleteByUserId(userId);
+    }
+
     // 특정 사용자의 북마크 조회
     // bookmarkRepository.findByUserId(userId)로 북마크 목록 가져오기
     // 각 북마크의 festivalId로 festivalRepository.findById(...) 조회해서

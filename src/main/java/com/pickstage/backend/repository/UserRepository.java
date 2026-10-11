@@ -15,6 +15,9 @@ public interface UserRepository extends JpaRepository<User, Long> {
     // 이메일로 유저 찾기 (로그인, 중복확인)
     Optional<User> findByEmail(String email);
 
+    // 토큰의 사용자가 탈퇴하지 않은 계정인지 확인 (JWT 필터에서 사용)
+    boolean existsByIdAndDeletedAtIsNull(Long id);
+
     // 이메일 존재 여부 확인 (중복확인)
     boolean existsByEmail(String email);
 
