@@ -22,7 +22,8 @@ public interface FestivalRepository extends JpaRepository<Festival, Long> {
                         "(:keyword IS NULL OR f.title LIKE %:keyword%) AND " +
                         "(:openAfter IS NULL OR f.ticketOpenDate > :openAfter) AND " +
                         "(:openBefore IS NULL OR f.ticketOpenDate <= :openBefore) AND " +
-                        "(:endAfter IS NULL OR f.endDate >= :endAfter)")
+                        "(:endAfter IS NULL OR f.endDate >= :endAfter) AND " +
+                        "(:outdoor = false OR (f.venueName LIKE '%공원%' OR f.venueName LIKE '%해변%' OR f.venueName LIKE '%해수욕장%' OR f.venueName LIKE '%광장%' OR f.venueName LIKE '%섬%' OR f.venueName LIKE '%잔디%' OR f.venueName LIKE '%운동장%' OR f.venueName LIKE '%경기장%' OR f.venueName LIKE '%평화누리%' OR f.venueName LIKE '%마당%' OR f.venueName LIKE '%야외%' OR f.venueName LIKE '%캠핑%'))")
         Page<Festival> findByFilters(
                         @Param("region") String region,
                         @Param("useGenres") boolean useGenres,
@@ -31,6 +32,7 @@ public interface FestivalRepository extends JpaRepository<Festival, Long> {
                         @Param("openAfter") LocalDateTime openAfter,
                         @Param("openBefore") LocalDateTime openBefore,
                         @Param("endAfter") LocalDate endAfter,
+                        @Param("outdoor") boolean outdoor,
                         Pageable pageable);
 
         // 해당 공연장에서 예정된 페스티벌

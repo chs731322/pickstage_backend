@@ -79,10 +79,11 @@ public class FestivalService {
         // 공연 목록 조회
         // sort: latest(기본) / popular / start(시작 임박순) / ticket_open(앞으로 열릴 티켓, 임박순) / ticket_open_recent(이미 열린 티켓, 최근순)
         // upcomingOnly: true면 이미 끝난 공연(종료일이 오늘 이전)은 제외 (메인 배너, 티켓 오픈 일정용)
+        // outdoor: true면 장소 이름에 공원·해변·광장 등이 들어간 야외 공연만
         @Transactional(readOnly = true)
         public Page<FestivalListResponse> getFestivals(
                         String region, String genre, String keyword,
-                        String sort, boolean upcomingOnly, int page, int size) {
+                        String sort, boolean upcomingOnly, boolean outdoor, int page, int size) {
 
                 if (page < 0 || size <= 0) {
                         throw new IllegalArgumentException("올바르지 않은 요청입니다.");
@@ -117,7 +118,7 @@ public class FestivalService {
                 boolean useGenres = !genreList.isEmpty();
 
                 Page<Festival> festivals = festivalRepository.findByFilters(region, useGenres, useGenres ? genreList : java.util.List.of(""),
-                                keyword, openAfter, openBefore, endAfter, pageable);
+                                keyword, openAfter, openBefore, endAfter, outdoor, pageable);
 
                 Map<Long, String> firstTicketLabels = sortKey.startsWith("ticket_open")
                                 ? firstTicketLabels(festivals.getContent())
