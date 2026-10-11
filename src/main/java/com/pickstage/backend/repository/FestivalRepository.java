@@ -18,14 +18,15 @@ public interface FestivalRepository extends JpaRepository<Festival, Long> {
 
         @Query("SELECT f FROM Festival f WHERE " +
                         "(:region IS NULL OR f.region = :region) AND " +
-                        "(:genre IS NULL OR f.genre = :genre) AND " +
+                        "(:useGenres = false OR f.genre IN :genres) AND " +
                         "(:keyword IS NULL OR f.title LIKE %:keyword%) AND " +
                         "(:openAfter IS NULL OR f.ticketOpenDate > :openAfter) AND " +
                         "(:openBefore IS NULL OR f.ticketOpenDate <= :openBefore) AND " +
                         "(:endAfter IS NULL OR f.endDate >= :endAfter)")
         Page<Festival> findByFilters(
                         @Param("region") String region,
-                        @Param("genre") String genre,
+                        @Param("useGenres") boolean useGenres,
+                        @Param("genres") java.util.Collection<String> genres,
                         @Param("keyword") String keyword,
                         @Param("openAfter") LocalDateTime openAfter,
                         @Param("openBefore") LocalDateTime openBefore,

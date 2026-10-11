@@ -77,7 +77,7 @@ public class FestivalService {
         }
 
         // 공연 목록 조회
-        // sort: latest(기본) / popular / ticket_open(앞으로 열릴 티켓, 임박순) / ticket_open_recent(이미 열린 티켓, 최근순)
+        // sort: latest(기본) / popular / start(시작 임박순) / ticket_open(앞으로 열릴 티켓, 임박순) / ticket_open_recent(이미 열린 티켓, 최근순)
         // upcomingOnly: true면 이미 끝난 공연(종료일이 오늘 이전)은 제외 (메인 배너, 티켓 오픈 일정용)
         @Transactional(readOnly = true)
         public Page<FestivalListResponse> getFestivals(
@@ -95,6 +95,7 @@ public class FestivalService {
 
                 Sort sorting = switch (sortKey) {
                         case "popular" -> Sort.by(Sort.Direction.DESC, "bookmarkCount");
+                        case "start" -> Sort.by(Sort.Direction.ASC, "startDate"); // 시작이 임박한 순
                         case "ticket_open" -> {
                                 openAfter = now; // 오픈일이 없거나 이미 지난 공연은 제외
                                 yield Sort.by(Sort.Direction.ASC, "ticketOpenDate");
@@ -110,8 +111,13 @@ public class FestivalService {
 
                 java.time.LocalDate endAfter = upcomingOnly ? java.time.LocalDate.now() : null;
 
-                Page<Festival> festivals = festivalRepository.findByFilters(region, genre, keyword, openAfter, openBefore,
-                                endAfter, pageable);
+                // genre는 "hiphop,edm"처럼 쉼표로 여러 개를 줄 수 있다
+                java.util.List<String> genreList = genre == null ? java.util.List.of()
+                                : java.util.Arrays.stream(genre.split(",")).map(String::trim).filter(g -> !g.isEmpty()).toList();
+                boolean useGenres = !genreList.isEmpty();
+
+                Page<Festival> festivals = festivalRepository.findByFilters(region, useGenres, useGenres ? genreList : java.util.List.of(""),
+                                keyword, openAfter, openBefore, endAfter, pageable);
 
                 Map<Long, String> firstTicketLabels = sortKey.startsWith("ticket_open")
                                 ? firstTicketLabels(festivals.getContent())
