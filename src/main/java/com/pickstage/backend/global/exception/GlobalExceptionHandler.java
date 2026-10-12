@@ -16,6 +16,8 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
     // 잘못된 요청 (이메일 중복, 비밀번호 불일치 등)
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ApiResponse<Void>> handleIllegalArgument(
@@ -144,6 +146,16 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.fail(e.getMessage()));
     }
 
+    // 요청 본문을 읽을 수 없는 경우 (날짜 형식 오류, 잘못된 JSON 등)
+    @ExceptionHandler(org.springframework.http.converter.HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiResponse<Void>> handleNotReadable(
+            org.springframework.http.converter.HttpMessageNotReadableException e) {
+
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.fail("요청 형식이 올바르지 않습니다. 날짜는 2026-08-29, 일시는 2026-08-29T14:00:00 형식으로 입력해 주세요."));
+    }
+
     // 이메일 발송에 실패한 경우
     @ExceptionHandler(MailException.class)
     public ResponseEntity<ApiResponse<Void>> handleMailException(
@@ -158,6 +170,9 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleException(
             Exception e) {
+
+        // 원인을 서버 로그에서 볼 수 있도록 남긴다
+        log.error("처리되지 않은 예외", e);
 
         return ResponseEntity
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
