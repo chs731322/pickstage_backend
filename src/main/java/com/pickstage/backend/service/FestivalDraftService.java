@@ -104,9 +104,22 @@ public class FestivalDraftService {
         // 이름이 정확히 일치하는(점수 100 이상) 공연장이 있으면 자동 선택
         Long venueId = (!venueCandidates.isEmpty() && venueCandidates.get(0).getScore() >= 100)
                 ? venueCandidates.get(0).getId() : null;
+
+        // AI가 공연장 이름을 주소 칸에 그대로 옮겨 적는 경우가 있어서, 그런 값은 비운다
+        String address = draft.getAddress();
+        if (address != null && (address.isBlank() || looksLikeVenueName(address, draft.getVenueName()))) {
+            address = null;
+        }
+        // 자료에 주소가 없으면 공연장 목록에 있는 주소로 채운다
+        if (address == null && !venueCandidates.isEmpty() && venueCandidates.get(0).getScore() >= 70
+                && venueCandidates.get(0).getAddress() != null && !venueCandidates.get(0).getAddress().isBlank()) {
+            address = venueCandidates.get(0).getAddress();
+            warnings.add("자료에 주소가 없어 공연장 목록의 주소(" + venueCandidates.get(0).getName() + ")로 채웠어요. 맞는지 확인해 주세요.");
+        }
+
         draft = Draft.builder()
                 .title(draft.getTitle()).description(draft.getDescription())
-                .venueId(venueId).venueName(draft.getVenueName()).address(draft.getAddress())
+                .venueId(venueId).venueName(draft.getVenueName()).address(address)
                 .region(draft.getRegion()).startDate(draft.getStartDate()).endDate(draft.getEndDate())
                 .genre(draft.getGenre()).tickets(draft.getTickets()).lineup(draft.getLineup())
                 .build();
@@ -155,6 +168,7 @@ public class FestivalDraftService {
         sb.append("- title은 공식 공연명(연도 포함 표기가 있으면 그대로)을 쓰고, description은 소개 문구를 900자 이내로 요약해.\n");
         sb.append("- startDate/endDate는 공연 전체의 첫날/마지막 날(YYYY-MM-DD). 하루짜리면 둘이 같아.\n");
         sb.append("- genre는 다음 중 하나: rock(록/메탈 중심), indie_band(인디/밴드/펑크 중심), hiphop(힙합/랩 중심), jazz(재즈 중심), edm(EDM·DJ 중심), general_music(아이돌·대중음악 등 종합), exception(클래식 등 그 외).\n");
+        sb.append("- venueName은 공연장 이름이고, address는 자료에 도로명·지번 주소가 실제로 적혀 있을 때만 써. 장소 이름을 address에 넣지 말고, 주소가 없으면 address는 null로 둬.\n");
         sb.append("- region은 장소가 있는 시/도의 짧은 이름이야.\n");
         sb.append("- tickets는 예매처(vendorName)별·권종(label)별로 나눠. price는 원 단위 숫자, openAt은 예매 오픈 일시(YYYY-MM-DDTHH:mm:ss).\n");
         sb.append("- lineup은 실제 출연하는 아티스트만, 적힌 순서대로. 자료에 적힌 표기를 그대로 쓰고 번역하거나 한글로 음역하지 마(영문 이름은 영문 그대로). 한글 이름과 영문 이름이 같이 적혀 있을 때만 한글 이름을 써. SNS 아이디, 소속, 팀·스테이지 이름, TBA 같은 안내 문구는 빼.\n");
@@ -324,6 +338,16 @@ public class FestivalDraftService {
 
     private static String norm(String s) {
         return s == null ? "" : ArtistMatchService.normalize(s).replaceAll("[\\p{Punct}·]", "");
+    }
+
+    // 주소 칸에 공연장 이름이 그대로(또는 숫자 없이 이름만) 들어간 경우
+    private static boolean looksLikeVenueName(String address, String venueName) {
+        String a = norm(address);
+        String v = norm(venueName);
+        if (a.isEmpty() || v.isEmpty()) {
+            return false;
+        }
+        return a.equals(v) || v.contains(a) || (a.contains(v) && !a.matches(".*\\d.*"));
     }
 
     private List<VenueCandidate> findVenueCandidates(String venueName, String region) {
