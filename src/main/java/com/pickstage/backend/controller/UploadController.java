@@ -26,7 +26,7 @@ public class UploadController {
     public ResponseEntity<ApiResponse<PresignedUrlResponse>> getPresignedUrl(
             @RequestBody PresignedUrlRequest request, @AuthenticationPrincipal Long userId) {
 
-        PresignedUrlResponse result = s3Service.generatePresignedUrl(request.getFileName());
+        PresignedUrlResponse result = s3Service.generatePresignedUrl(request.getContentType(), request.getSize());
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 }

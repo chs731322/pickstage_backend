@@ -8,4 +8,6 @@ import lombok.NoArgsConstructor;
 public class PresignedUrlRequest {
 
     private String fileName;
+    private String contentType;
+    private Long size;
 }
