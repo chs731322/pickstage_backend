@@ -1,6 +1,11 @@
 package com.pickstage.backend.service;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import org.springframework.beans.factory.annotation.Value;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -25,6 +30,18 @@ import com.pickstage.backend.repository.PostLikeRepository;
 
 @Service
 public class PostService {
+    private static final int TITLE_MAX_LENGTH = 200;
+    private static final int CONTENT_MAX_LENGTH = 20000;
+    private static final int IMAGES_MAX_COUNT = 30;
+    // 본문 안의 사진 표기: ![설명](주소)
+    private static final Pattern MARKDOWN_IMAGE = Pattern.compile("!\\[[^\\]]*\\]\\(([^)\\s]*)\\)");
+
+    @Value("${aws.s3.bucket}")
+    private String bucket;
+
+    @Value("${aws.s3.region}")
+    private String region;
+
     private final PostRepository postRepository;
     private final FestivalRepository festivalRepository;
     private final UserRepository userRepository;
@@ -100,6 +117,11 @@ public class PostService {
     // 게시글 작성
     @Transactional
     public void createPost(Long userId, PostCreateRequest request) {
+        if (request.getTitle() == null || request.getTitle().isBlank()
+                || request.getContent() == null || request.getContent().isBlank()) {
+            throw new IllegalArgumentException("제목과 내용을 입력해주세요.");
+        }
+        validatePostBody(request.getTitle(), request.getContent(), request.getImages());
         if (request.getFestivalId() != null && !festivalRepository.existsById(request.getFestivalId())) {
             throw new IllegalStateException("존재하지 않는 공연입니다.");
         }
@@ -129,6 +151,7 @@ public class PostService {
     @Transactional
     public void updatePost(Long postId, Long userId, PostUpdateRequest request) {
         Post post = findOwnedPost(postId, userId, "수정 권한이 없습니다.");
+        validatePostBody(request.getTitle(), request.getContent(), request.getImages());
 
         if (request.getTitle() != null) {
             post.setTitle(request.getTitle());
@@ -144,6 +167,35 @@ public class PostService {
                 String url = request.getImages().get(i);
                 PostImage postImage = new PostImage(null, postId, url, i);
                 postImageRepository.save(postImage);
+            }
+        }
+    }
+
+    // 제목·본문 길이와 사진 주소를 검사한다. 사진은 우리 이미지 저장소 주소만 허용한다. (null인 값은 건너뜀)
+    private void validatePostBody(String title, String content, List<String> images) {
+        String allowedPrefix = "https://" + bucket + ".s3." + region + ".amazonaws.com/";
+        if (title != null && (title.isBlank() || title.length() > TITLE_MAX_LENGTH)) {
+            throw new IllegalArgumentException("제목은 1~" + TITLE_MAX_LENGTH + "자로 입력해주세요.");
+        }
+        if (content != null) {
+            if (content.isBlank() || content.length() > CONTENT_MAX_LENGTH) {
+                throw new IllegalArgumentException("내용은 1~" + CONTENT_MAX_LENGTH + "자로 입력해주세요.");
+            }
+            Matcher matcher = MARKDOWN_IMAGE.matcher(content);
+            while (matcher.find()) {
+                if (!matcher.group(1).startsWith(allowedPrefix)) {
+                    throw new IllegalArgumentException("본문의 사진은 업로드한 이미지만 사용할 수 있습니다.");
+                }
+            }
+        }
+        if (images != null) {
+            if (images.size() > IMAGES_MAX_COUNT) {
+                throw new IllegalArgumentException("사진은 최대 " + IMAGES_MAX_COUNT + "장까지 올릴 수 있습니다.");
+            }
+            for (String url : images) {
+                if (url == null || !url.startsWith(allowedPrefix)) {
+                    throw new IllegalArgumentException("업로드한 이미지만 사용할 수 있습니다.");
+                }
             }
         }
     }
