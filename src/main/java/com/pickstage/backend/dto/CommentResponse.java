@@ -12,5 +12,6 @@ public class CommentResponse {
     private Long parentId;
     private String content;
     private String authorNickname;
+    private String authorProfileImage;
     private LocalDateTime createdAt;
 }

@@ -14,6 +14,7 @@ public class PostDetailResponse {
     private String title;
     private String content;
     private String authorNickname;
+    private String authorProfileImage;
     private Long festivalId;
     private String festivalTitle;
     private int viewCount;

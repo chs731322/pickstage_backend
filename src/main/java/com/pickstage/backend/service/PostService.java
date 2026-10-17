@@ -1,7 +1,9 @@
 package com.pickstage.backend.service;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -64,12 +66,14 @@ public class PostService {
     public Page<PostListResponse> getPosts(String category, Long festivalId, Pageable pageable) {
         Post.Category categoryEnum = parseCategory(category);
 
+        Map<Long, User> authors = new HashMap<>();
         return postRepository.findByFilters(categoryEnum, festivalId, pageable)
                 .map(post -> PostListResponse.builder()
                         .id(post.getId())
                         .category(post.getCategory().name())
                         .title(post.getTitle())
-                        .authorNickname(getNickname(post.getUserId()))
+                        .authorNickname(nicknameOf(authors, post.getUserId()))
+                        .authorProfileImage(profileImageOf(authors, post.getUserId()))
                         .festivalId(post.getFestivalId())
                         .festivalTitle(getFestivalTitle(post.getFestivalId()))
                         .viewCount(post.getViewCount())
@@ -86,12 +90,14 @@ public class PostService {
         post.setViewCount(post.getViewCount() + 1);
         postRepository.save(post);
 
+        Map<Long, User> authors = new HashMap<>();
         return PostDetailResponse.builder()
                 .id(post.getId())
                 .category(post.getCategory().name())
                 .title(post.getTitle())
                 .content(post.getContent())
-                .authorNickname(getNickname(post.getUserId()))
+                .authorNickname(nicknameOf(authors, post.getUserId()))
+                .authorProfileImage(profileImageOf(authors, post.getUserId()))
                 .festivalId(post.getFestivalId())
                 .festivalTitle(getFestivalTitle(post.getFestivalId()))
                 .viewCount(post.getViewCount())
@@ -104,7 +110,8 @@ public class PostService {
                                 .id(comment.getId())
                                 .parentId(comment.getParentId())
                                 .content(comment.getContent())
-                                .authorNickname(getNickname(comment.getUserId()))
+                                .authorNickname(nicknameOf(authors, comment.getUserId()))
+                                .authorProfileImage(profileImageOf(authors, comment.getUserId()))
                                 .createdAt(comment.getCreatedAt())
                                 .build())
                         .toList())
@@ -272,10 +279,22 @@ public class PostService {
         }
     }
 
-    private String getNickname(Long userId) {
-        return userRepository.findById(userId)
-                .map(user -> user.getNickname())
-                .orElse(null);
+    // 같은 요청 안에서 같은 작성자는 한 번만 조회한다 (게시글·댓글 작성자 중복 조회 방지)
+    private User authorOf(Map<Long, User> authors, Long userId) {
+        if (userId == null) {
+            return null;
+        }
+        return authors.computeIfAbsent(userId, id -> userRepository.findById(id).orElse(null));
+    }
+
+    private String nicknameOf(Map<Long, User> authors, Long userId) {
+        User author = authorOf(authors, userId);
+        return author == null ? null : author.getNickname();
+    }
+
+    private String profileImageOf(Map<Long, User> authors, Long userId) {
+        User author = authorOf(authors, userId);
+        return author == null ? null : author.getProfileImage();
     }
 
     private String getFestivalTitle(Long festivalId) {

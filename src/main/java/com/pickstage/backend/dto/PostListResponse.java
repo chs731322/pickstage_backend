@@ -12,6 +12,7 @@ public class PostListResponse {
     private String category;
     private String title;
     private String authorNickname;
+    private String authorProfileImage;
     private Long festivalId;
     private String festivalTitle;
     private int viewCount;
