@@ -1,5 +1,7 @@
 package com.pickstage.backend.service;
 
+import java.time.LocalDateTime;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
@@ -11,6 +13,7 @@ import com.pickstage.backend.dto.NotificationContent;
 import com.pickstage.backend.dto.NotificationResponse;
 import com.pickstage.backend.entity.Festival;
 import com.pickstage.backend.entity.Notification;
+import com.pickstage.backend.entity.Post;
 import com.pickstage.backend.repository.FestivalRepository;
 import com.pickstage.backend.repository.NotificationRepository;
 
@@ -37,9 +40,11 @@ public class NotificationService {
             // n : Notification 엔티티 하나
             // NotificationContent.builder()로 하나 만들어서 리턴
 
-            String festivalTitle = festivalRepository.findById(n.getFestivalId())
-                    .map(festival -> festival.getTitle())
-                    .orElse(null);
+            // 댓글 알림은 공연과 연결돼 있지 않아 festivalId가 없다
+            String festivalTitle = n.getFestivalId() == null ? null
+                    : festivalRepository.findById(n.getFestivalId())
+                            .map(festival -> festival.getTitle())
+                            .orElse(null);
 
             return NotificationContent.builder()
                     .id(n.getId())
@@ -48,6 +53,7 @@ public class NotificationService {
                     .message(n.getMessage())
                     .festivalId(n.getFestivalId())
                     .festivalTitle(festivalTitle)
+                    .postId(n.getPostId())
                     .isRead(n.isRead())
                     .sentAt(n.getSentAt() != null ? n.getSentAt().toString() : null)
                     .build();
@@ -85,7 +91,10 @@ public class NotificationService {
         // festival.getTicketOpenDate()가 null이면 그냥 return (에러 아님 — 비고에 그렇게 적어놨었죠)
         if (festival.getTicketOpenDate() == null)
             return;
-        
+        // 이미 오픈 시각이 지난 공연은 알림을 예약하지 않는다 (예약하면 스케줄러가 바로 "곧 오픈됩니다"를 보내 버린다)
+        if (!festival.getTicketOpenDate().isAfter(LocalDateTime.now()))
+            return;
+
         Notification notification = Notification.builder()
                 .userId(userId)
                 .festivalId(festival.getId())
@@ -98,5 +107,30 @@ public class NotificationService {
                 .build();
 
         notificationRepository.save(notification);
+    }
+    // 내 게시글에 다른 사람이 댓글을 달았을 때 글쓴이에게 바로 보내는 알림
+    @Transactional
+    public void notifyNewComment(Post post, Long commenterId, String commenterNickname) {
+        // 내가 내 글에 단 댓글은 알리지 않는다
+        if (post.getUserId() == null || post.getUserId().equals(commenterId)) {
+            return;
+        }
+        String postTitle = post.getTitle() == null ? "" : post.getTitle();
+        if (postTitle.length() > 30) {
+            postTitle = postTitle.substring(0, 30) + "…";
+        }
+        LocalDateTime now = LocalDateTime.now();
+        notificationRepository.save(Notification.builder()
+                .userId(post.getUserId())
+                .postId(post.getId())
+                .type(Notification.Type.comment)
+                .title("새 댓글")
+                .message(commenterNickname + "님이 '" + postTitle + "' 글에 댓글을 남겼어요.")
+                .isSent(true)
+                .isRead(false)
+                .scheduledAt(now)
+                .sentAt(now)
+                .createdAt(now)
+                .build());
     }
 }

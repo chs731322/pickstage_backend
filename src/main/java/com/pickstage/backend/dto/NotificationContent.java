@@ -16,6 +16,7 @@ public class NotificationContent {
     private String message;
     private Long festivalId;
     private String festivalTitle;
+    private Long postId;
 
     @Getter(onMethod_ = @__(@JsonProperty("isRead")))
     private boolean isRead;

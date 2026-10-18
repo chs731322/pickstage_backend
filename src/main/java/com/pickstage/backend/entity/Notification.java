@@ -33,6 +33,10 @@ public class Notification {
     @Column(name = "festival_id")
     private Long festivalId;
 
+    // 댓글 알림처럼 게시글과 연결된 알림일 때만 값이 있다
+    @Column(name = "post_id")
+    private Long postId;
+
     @Enumerated(EnumType.STRING)
     private Type type;
 
@@ -56,7 +60,7 @@ public class Notification {
     private LocalDateTime createdAt;
 
     public enum Type {
-        ticket_open, concert_day, custom
+        ticket_open, concert_day, custom, comment
     }
 
     public void markAsRead() {

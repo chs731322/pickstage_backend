@@ -8,15 +8,22 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.pickstage.backend.entity.Comment;
 import com.pickstage.backend.entity.Post;
+import com.pickstage.backend.entity.User;
 import com.pickstage.backend.repository.CommentRepository;
 import com.pickstage.backend.repository.PostRepository;
+import com.pickstage.backend.repository.UserRepository;
 
 @Service
 public class CommentService {
     private final CommentRepository commentRepository;
     private final PostRepository postRepository;
+    private final UserRepository userRepository;
+    private final NotificationService notificationService;
 
-    public CommentService(CommentRepository commentRepository, PostRepository postRepository) {
+    public CommentService(CommentRepository commentRepository, PostRepository postRepository,
+            UserRepository userRepository, NotificationService notificationService) {
+        this.userRepository = userRepository;
+        this.notificationService = notificationService;
         this.commentRepository = commentRepository;
         this.postRepository = postRepository;
     }
@@ -51,6 +58,10 @@ public class CommentService {
                 .build();
 
         commentRepository.save(comment);
+
+        // 내 글에 다른 사람이 댓글을 달면 글쓴이에게 알린다
+        String nickname = userRepository.findById(userId).map(User::getNickname).orElse("누군가");
+        notificationService.notifyNewComment(post, userId, nickname);
     }
 
     // 댓글 수정
