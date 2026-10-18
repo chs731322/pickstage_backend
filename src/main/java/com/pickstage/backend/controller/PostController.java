@@ -2,6 +2,7 @@ package com.pickstage.backend.controller;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -34,12 +35,25 @@ public class PostController {
             @RequestParam(required = false) String category,
             @RequestParam(required = false) Long festivalId,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "latest") String sort) {
 
-        Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = PageRequest.of(page, size, postSort(sort));
         Page<PostListResponse> result = postService.getPosts(category, festivalId, pageable);
 
         return ResponseEntity.ok(ApiResponse.success(PageResponse.of(result)));
+    }
+
+    // 목록 정렬: latest(최신순, 기본) / likes(좋아요순) / views(조회순). 같은 값이면 최신 글이 먼저 나온다.
+    private Sort postSort(String sort) {
+        Sort byNewest = Sort.by(Sort.Direction.DESC, "createdAt", "id");
+        if ("likes".equals(sort)) {
+            return Sort.by(Sort.Direction.DESC, "likeCount").and(byNewest);
+        }
+        if ("views".equals(sort)) {
+            return Sort.by(Sort.Direction.DESC, "viewCount").and(byNewest);
+        }
+        return byNewest;
     }
 
     // 게시글 상세 조회
