@@ -1,6 +1,7 @@
 package com.pickstage.backend.service;
 
 import com.pickstage.backend.dto.AuthResponse;
+import com.pickstage.backend.dto.GoogleUserResponse;
 import com.pickstage.backend.dto.KakaoUserResponse;
 import com.pickstage.backend.dto.NaverUserResponse;
 import com.pickstage.backend.dto.PasswordResetRequest;
@@ -34,6 +35,7 @@ public class AuthService {
     private final EmailService emailService;
     private final KakaoService kakaoService;
     private final NaverService naverService;
+    private final GoogleService googleService;
 
     public AuthService(UserRepository userRepository,
                        RefreshTokenRepository refreshTokenRepository,
@@ -42,7 +44,8 @@ public class AuthService {
                        PasswordEncoder passwordEncoder,
                        EmailService emailService,
                        KakaoService kakaoService,
-                       NaverService naverService) {
+                       NaverService naverService,
+                       GoogleService googleService) {
 
         this.userRepository = userRepository;
         this.refreshTokenRepository = refreshTokenRepository;
@@ -52,6 +55,7 @@ public class AuthService {
         this.emailService = emailService;
         this.kakaoService = kakaoService;
         this.naverService = naverService;
+        this.googleService = googleService;
     }
 
     // 이메일 중복 확인
@@ -332,6 +336,108 @@ public class AuthService {
                 .nickname(nickname)
                 .profileImage(profileImage)
                 .socialProvider(User.SocialProvider.naver)
+                .socialId(socialId)
+                .role(User.Role.user)
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
+
+        userRepository.save(newUser);
+
+        return generateTokens(newUser);
+    }
+
+    // 구글 로그인
+    @Transactional
+    public AuthResponse googleLogin(String code) {
+
+        // 인가코드로 구글 Access Token 발급
+        String googleAccessToken =
+                googleService.getAccessToken(code);
+
+        // 구글 사용자 정보 조회
+        GoogleUserResponse googleUser =
+                googleService.getUserInfo(
+                        googleAccessToken
+                );
+
+        String socialId =
+                googleUser.getSub();
+
+        // 기존 구글 회원인지 확인
+        User existingUser =
+                userRepository
+                        .findBySocialProviderAndSocialId(
+                                User.SocialProvider.google,
+                                socialId
+                        )
+                        .orElse(null);
+
+        if (existingUser != null) {
+
+            // 탈퇴한 사용자는 로그인 불가
+            if (existingUser.getDeletedAt() != null) {
+                throw new IllegalArgumentException(
+                        "탈퇴한 회원입니다."
+                );
+            }
+
+            return generateTokens(existingUser);
+        }
+
+        // 이메일 정보 확인
+        if (googleUser.getEmail() == null
+                || googleUser.getEmail().isBlank()) {
+
+            throw new IllegalArgumentException(
+                    "구글 계정 이메일 정보를 가져올 수 없습니다."
+            );
+        }
+
+        String email =
+                googleUser.getEmail();
+
+        String nickname =
+                "구글사용자" + socialId;
+
+        String profileImage = null;
+
+        // 구글 이름이 있으면 닉네임으로 사용
+        if (googleUser.getName() != null
+                && !googleUser.getName().isBlank()) {
+
+            nickname =
+                    googleUser.getName();
+        }
+
+        // 구글 프로필 이미지가 있으면 사용
+        if (googleUser.getPicture() != null
+                && !googleUser.getPicture().isBlank()) {
+
+            profileImage =
+                    googleUser.getPicture();
+        }
+
+        // 동일 닉네임이 이미 존재하면 중복되지 않도록 변경
+        if (userRepository.existsByNickname(nickname)) {
+            nickname =
+                    nickname + "_" + socialId;
+        }
+
+        // 동일 이메일이 이미 존재하는 경우
+        if (userRepository.existsByEmail(email)) {
+            throw new IllegalArgumentException(
+                    "이미 다른 방식으로 가입된 이메일입니다."
+            );
+        }
+
+        // 신규 구글 회원 자동 가입
+        User newUser = User.builder()
+                .email(email)
+                .passwordHash(null)
+                .nickname(nickname)
+                .profileImage(profileImage)
+                .socialProvider(User.SocialProvider.google)
                 .socialId(socialId)
                 .role(User.Role.user)
                 .createdAt(LocalDateTime.now())

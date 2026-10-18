@@ -145,6 +145,19 @@ public class AuthController {
                 ApiResponse.success(response)
         );
     }
+    
+    // 구글 로그인 콜백
+    @GetMapping("/google/callback")
+    public ResponseEntity<ApiResponse<AuthResponse>> googleCallback(
+            @RequestParam String code) {
+
+        AuthResponse response =
+                authService.googleLogin(code);
+
+        return ResponseEntity.ok(
+                ApiResponse.success(response)
+        );
+    }
 
     // 로그아웃
     @PostMapping("/signout")
