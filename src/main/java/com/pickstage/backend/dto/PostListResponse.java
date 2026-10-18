@@ -17,5 +17,8 @@ public class PostListResponse {
     private String festivalTitle;
     private int viewCount;
     private int likeCount;
+    private int commentCount;
+    // 본문 앞부분 (사진 줄은 뺀 글만). 메인 페이지 카드처럼 목록에서 본문을 보여줄 때 쓴다
+    private String preview;
     private LocalDateTime createdAt;
 }

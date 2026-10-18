@@ -36,6 +36,9 @@ public class PostService {
     private static final int CONTENT_MAX_LENGTH = 20000;
     private static final int IMAGES_MAX_COUNT = 30;
     // 본문 안의 사진 표기: ![설명](주소)
+    private static final int PREVIEW_MAX_LENGTH = 120;
+    // 사진만 있는 한 줄: ![설명](주소)
+    private static final Pattern MARKDOWN_IMAGE_LINE = Pattern.compile("^!\\[[^\\]]*\\]\\([^)\\s]*\\)$");
     private static final Pattern MARKDOWN_IMAGE = Pattern.compile("!\\[[^\\]]*\\]\\(([^)\\s]*)\\)");
 
     @Value("${aws.s3.bucket}")
@@ -81,8 +84,25 @@ public class PostService {
                         .festivalTitle(getFestivalTitle(post.getFestivalId()))
                         .viewCount(post.getViewCount())
                         .likeCount(post.getLikeCount())
+                        .commentCount((int) commentRepository.countByPostIdAndDeletedAtIsNull(post.getId()))
+                        .preview(previewOf(post.getContent()))
                         .createdAt(post.getCreatedAt())
                         .build());
+    }
+
+    // 본문에서 사진 줄을 빼고 줄바꿈을 공백으로 이어 앞부분만 잘라 미리보기 글로 만든다
+    private String previewOf(String content) {
+        if (content == null) {
+            return "";
+        }
+        StringBuilder text = new StringBuilder();
+        for (String line : content.split("\n")) {
+            if (!MARKDOWN_IMAGE_LINE.matcher(line.trim()).matches()) {
+                text.append(line).append(' ');
+            }
+        }
+        String collapsed = text.toString().replaceAll("\\s+", " ").trim();
+        return collapsed.length() > PREVIEW_MAX_LENGTH ? collapsed.substring(0, PREVIEW_MAX_LENGTH) + "…" : collapsed;
     }
 
     // 게시글 상세 조회
@@ -90,8 +110,9 @@ public class PostService {
     public PostDetailResponse getPost(Long postId, Long userId, String viewerKey) {
         Post post = findVisiblePost(postId);
 
-        // 같은 조회자의 반복 조회(새로고침, 좋아요·댓글 뒤 재조회)는 조회수에 더하지 않는다
-        if (postViewGuard.shouldCount(postId, viewerKey)) {
+        // 글쓴이 본인의 조회와 같은 조회자의 반복 조회(새로고침, 좋아요·댓글 뒤 재조회)는 조회수에 더하지 않는다
+        boolean isAuthor = userId != null && userId.equals(post.getUserId());
+        if (!isAuthor && postViewGuard.shouldCount(postId, viewerKey)) {
             post.setViewCount(post.getViewCount() + 1);
             postRepository.save(post);
         }

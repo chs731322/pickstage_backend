@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 // 서버가 재시작되면 기록이 지워진다 (조회수 중복 방지 용도라 그 정도는 허용한다).
 @Component
 public class PostViewGuard {
+    public static final String BOT_KEY = "bot";
     private static final long WINDOW_MILLIS = Duration.ofHours(24).toMillis();
     private static final int PRUNE_THRESHOLD = 20_000;
 
@@ -18,6 +19,10 @@ public class PostViewGuard {
     public boolean shouldCount(Long postId, String viewerKey) {
         if (viewerKey == null || viewerKey.isBlank()) {
             return true;
+        }
+        // 검색 로봇·링크 미리보기 봇은 조회수에 세지 않는다
+        if (viewerKey.startsWith(BOT_KEY)) {
+            return false;
         }
         long now = System.currentTimeMillis();
         boolean[] counted = { false };

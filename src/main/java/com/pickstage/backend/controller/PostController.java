@@ -18,10 +18,16 @@ import com.pickstage.backend.dto.PostListResponse;
 import com.pickstage.backend.dto.PostUpdateRequest;
 import com.pickstage.backend.global.response.ApiResponse;
 import com.pickstage.backend.service.PostService;
+import com.pickstage.backend.service.PostViewGuard;
 
 @RestController
 @RequestMapping("/api/posts")
 public class PostController {
+    // 검색 로봇·링크 미리보기 등 사람이 아닌 접속
+    private static final java.util.regex.Pattern BOT_USER_AGENT = java.util.regex.Pattern.compile(
+            "bot|crawl|spider|slurp|facebookexternalhit|kakaotalk-scrap|preview|headless|curl|wget|python-requests",
+            java.util.regex.Pattern.CASE_INSENSITIVE);
+
 
     private final PostService postService;
 
@@ -66,6 +72,10 @@ public class PostController {
 
     // 조회수 중복 방지용 조회자 식별값: 로그인했으면 계정, 아니면 접속 IP (프록시 뒤라 X-Forwarded-For 우선)
     private String viewerKey(Long userId, HttpServletRequest request) {
+        String userAgent = request.getHeader("User-Agent");
+        if (userAgent != null && BOT_USER_AGENT.matcher(userAgent).find()) {
+            return PostViewGuard.BOT_KEY;
+        }
         if (userId != null) {
             return "u" + userId;
         }
