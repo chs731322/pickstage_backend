@@ -50,15 +50,18 @@ public class PostService {
     private final CommentRepository commentRepository;
     private final PostImageRepository postImageRepository;
     private final PostLikeRepository postLikeRepository;
+    private final PostViewGuard postViewGuard;
 
     public PostService(PostRepository postRepository, FestivalRepository festivalRepository,
             UserRepository userRepository, CommentRepository commentRepository,
-            PostImageRepository postImageRepository, PostLikeRepository postLikeRepository) {
+            PostImageRepository postImageRepository, PostLikeRepository postLikeRepository,
+            PostViewGuard postViewGuard) {
         this.postRepository = postRepository;
         this.festivalRepository = festivalRepository;
         this.userRepository = userRepository;
         this.commentRepository = commentRepository;
         this.postImageRepository = postImageRepository;
+        this.postViewGuard = postViewGuard;
         this.postLikeRepository = postLikeRepository;
     }
 
@@ -84,11 +87,14 @@ public class PostService {
 
     // 게시글 상세 조회
     @Transactional
-    public PostDetailResponse getPost(Long postId, Long userId) {
+    public PostDetailResponse getPost(Long postId, Long userId, String viewerKey) {
         Post post = findVisiblePost(postId);
 
-        post.setViewCount(post.getViewCount() + 1);
-        postRepository.save(post);
+        // 같은 조회자의 반복 조회(새로고침, 좋아요·댓글 뒤 재조회)는 조회수에 더하지 않는다
+        if (postViewGuard.shouldCount(postId, viewerKey)) {
+            post.setViewCount(post.getViewCount() + 1);
+            postRepository.save(post);
+        }
 
         Map<Long, User> authors = new HashMap<>();
         return PostDetailResponse.builder()

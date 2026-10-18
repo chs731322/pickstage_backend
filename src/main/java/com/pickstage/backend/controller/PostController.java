@@ -8,6 +8,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.servlet.http.HttpServletRequest;
+
 import com.pickstage.backend.dto.PageResponse;
 import com.pickstage.backend.dto.PostCreateRequest;
 import com.pickstage.backend.dto.PostDetailResponse;
@@ -43,9 +45,21 @@ public class PostController {
     // 게시글 상세 조회
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<PostDetailResponse>> getPost(
-            @AuthenticationPrincipal Long userId, @PathVariable Long id) {
-        PostDetailResponse result = postService.getPost(id, userId);
+            @AuthenticationPrincipal Long userId, @PathVariable Long id, HttpServletRequest request) {
+        PostDetailResponse result = postService.getPost(id, userId, viewerKey(userId, request));
         return ResponseEntity.ok(ApiResponse.success(result));
+    }
+
+    // 조회수 중복 방지용 조회자 식별값: 로그인했으면 계정, 아니면 접속 IP (프록시 뒤라 X-Forwarded-For 우선)
+    private String viewerKey(Long userId, HttpServletRequest request) {
+        if (userId != null) {
+            return "u" + userId;
+        }
+        String forwarded = request.getHeader("X-Forwarded-For");
+        String ip = (forwarded != null && !forwarded.isBlank())
+                ? forwarded.split(",")[0].trim()
+                : request.getRemoteAddr();
+        return "ip" + ip;
     }
 
     // 게시글 작성
