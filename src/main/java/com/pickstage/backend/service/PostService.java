@@ -166,6 +166,10 @@ public class PostService {
         Post post = findOwnedPost(postId, userId, "수정 권한이 없습니다.");
         validatePostBody(request.getTitle(), request.getContent(), request.getImages());
 
+        // 카테고리는 보낸 경우에만 바꾼다 (허용되지 않는 값이면 parseCategory가 거절한다)
+        if (request.getCategory() != null) {
+            post.setCategory(parseCategory(request.getCategory()));
+        }
         if (request.getTitle() != null) {
             post.setTitle(request.getTitle());
         }

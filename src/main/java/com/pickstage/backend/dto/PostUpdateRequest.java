@@ -9,6 +9,7 @@ import java.util.List;
 @AllArgsConstructor
 @Builder
 public class PostUpdateRequest {
+    private String category;
     private String title;
     private String content;
     List<String> images;
