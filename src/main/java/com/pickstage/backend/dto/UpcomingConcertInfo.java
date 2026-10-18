@@ -16,6 +16,7 @@ public class UpcomingConcertInfo {
     private String title;
     private String posterImage;
     private LocalDate startDate;
+    private LocalDate endDate;
     private String region;
     private String venueName;
 }

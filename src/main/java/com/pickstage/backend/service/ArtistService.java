@@ -34,19 +34,9 @@ public class ArtistService {
         Artist artist = artistRepository.findById(id)
                 .orElseThrow(() -> new IllegalStateException("존재하지 않는 아티스트입니다."));
 
-        List<UpcomingConcertInfo> upcomingConcerts = festivalArtistRepository
-                .findUpcomingByArtistId(id, LocalDate.now())
-                .stream()
-                .map(FestivalArtist::getFestival)
-                .map(festival -> UpcomingConcertInfo.builder()
-                        .id(festival.getId())
-                        .title(festival.getTitle())
-                        .posterImage(festival.getPosterUrl())
-                        .startDate(festival.getStartDate())
-                        .region(festival.getRegion())
-                        .venueName(festival.getVenueName())
-                        .build())
-                .toList();
+        LocalDate today = LocalDate.now();
+        List<UpcomingConcertInfo> upcomingConcerts = toConcertInfos(festivalArtistRepository.findUpcomingByArtistId(id, today));
+        List<UpcomingConcertInfo> pastConcerts = toConcertInfos(festivalArtistRepository.findPastByArtistId(id, today));
 
         return ArtistDetailResponse.builder()
                 .id(artist.getId())
@@ -62,7 +52,23 @@ public class ArtistService {
                 .spotifyUrl(artist.getSpotifyUrl())
                 .description(null)
                 .upcomingConcerts(upcomingConcerts)
+                .pastConcerts(pastConcerts)
                 .build();
+    }
+
+    private List<UpcomingConcertInfo> toConcertInfos(List<FestivalArtist> festivalArtists) {
+        return festivalArtists.stream()
+                .map(FestivalArtist::getFestival)
+                .map(festival -> UpcomingConcertInfo.builder()
+                        .id(festival.getId())
+                        .title(festival.getTitle())
+                        .posterImage(festival.getPosterUrl())
+                        .startDate(festival.getStartDate())
+                        .endDate(festival.getEndDate())
+                        .region(festival.getRegion())
+                        .venueName(festival.getVenueName())
+                        .build())
+                .toList();
     }
 
     // genre_tags는 DB에 JSON 문자열로 저장돼 있어 List<String>으로 파싱
