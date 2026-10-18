@@ -73,6 +73,9 @@ public class SecurityConfig {
                         // 로그인 필요 (내 관심 아티스트 목록 조회)
                         .requestMatchers(HttpMethod.GET, "/api/artists/interests").authenticated()
 
+                        // 로그인 필요 (내가 쓴 커뮤니티 글 목록). 아래 /api/posts/** 공개 규칙보다 먼저 와야 한다
+                        .requestMatchers(HttpMethod.GET, "/api/posts/me").authenticated()
+
                         .requestMatchers(
                                 HttpMethod.GET,
                                 "/api/festivals/**",

@@ -74,20 +74,33 @@ public class PostService {
 
         Map<Long, User> authors = new HashMap<>();
         return postRepository.findByFilters(categoryEnum, festivalId, pageable)
-                .map(post -> PostListResponse.builder()
-                        .id(post.getId())
-                        .category(post.getCategory().name())
-                        .title(post.getTitle())
-                        .authorNickname(nicknameOf(authors, post.getUserId()))
-                        .authorProfileImage(profileImageOf(authors, post.getUserId()))
-                        .festivalId(post.getFestivalId())
-                        .festivalTitle(getFestivalTitle(post.getFestivalId()))
-                        .viewCount(post.getViewCount())
-                        .likeCount(post.getLikeCount())
-                        .commentCount((int) commentRepository.countByPostIdAndDeletedAtIsNull(post.getId()))
-                        .preview(previewOf(post.getContent()))
-                        .createdAt(post.getCreatedAt())
-                        .build());
+                .map(post -> toListResponse(post, authors));
+    }
+
+    // 내가 쓴 글 목록 (마이페이지)
+    public Page<PostListResponse> getMyPosts(Long userId, String category, Pageable pageable) {
+        Post.Category categoryEnum = parseCategory(category);
+
+        Map<Long, User> authors = new HashMap<>();
+        return postRepository.findMine(userId, categoryEnum, pageable)
+                .map(post -> toListResponse(post, authors));
+    }
+
+    private PostListResponse toListResponse(Post post, Map<Long, User> authors) {
+        return PostListResponse.builder()
+                .id(post.getId())
+                .category(post.getCategory().name())
+                .title(post.getTitle())
+                .authorNickname(nicknameOf(authors, post.getUserId()))
+                .authorProfileImage(profileImageOf(authors, post.getUserId()))
+                .festivalId(post.getFestivalId())
+                .festivalTitle(getFestivalTitle(post.getFestivalId()))
+                .viewCount(post.getViewCount())
+                .likeCount(post.getLikeCount())
+                .commentCount((int) commentRepository.countByPostIdAndDeletedAtIsNull(post.getId()))
+                .preview(previewOf(post.getContent()))
+                .createdAt(post.getCreatedAt())
+                .build();
     }
 
     // 본문에서 사진 줄을 빼고 줄바꿈을 공백으로 이어 앞부분만 잘라 미리보기 글로 만든다

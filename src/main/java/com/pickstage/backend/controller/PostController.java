@@ -50,6 +50,20 @@ public class PostController {
         return ResponseEntity.ok(ApiResponse.success(PageResponse.of(result)));
     }
 
+    // 내가 쓴 글 목록 (마이페이지). 최신순, 카테고리로 거를 수 있다. 로그인 필요.
+    @GetMapping("/me")
+    public ResponseEntity<ApiResponse<PageResponse<PostListResponse>>> getMyPosts(
+            @AuthenticationPrincipal Long userId,
+            @RequestParam(required = false) String category,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+
+        Pageable pageable = PageRequest.of(page, size, postSort("latest"));
+        Page<PostListResponse> result = postService.getMyPosts(userId, category, pageable);
+
+        return ResponseEntity.ok(ApiResponse.success(PageResponse.of(result)));
+    }
+
     // 목록 정렬: latest(최신순, 기본) / likes(좋아요순) / views(조회순). 같은 값이면 최신 글이 먼저 나온다.
     private Sort postSort(String sort) {
         Sort byNewest = Sort.by(Sort.Direction.DESC, "createdAt", "id");
