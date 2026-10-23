@@ -10,6 +10,10 @@ import java.util.List;
 
 public interface FestivalArtistRepository extends JpaRepository<FestivalArtist, Long> {
 
+        // 사이트맵용: 출연 공연이 하나라도 있는 아티스트 id (공연 정보가 없는 아티스트 페이지는 내용이 빈약해 제외)
+        @Query("SELECT DISTINCT fa.artist.id FROM FestivalArtist fa ORDER BY fa.artist.id")
+        List<Long> findLinkedArtistIds();
+
         // 공연 수정 시 라인업 교체용
         @org.springframework.data.jpa.repository.Modifying
         @Query("DELETE FROM FestivalArtist fa WHERE fa.festival.id = :festivalId")

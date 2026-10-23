@@ -29,6 +29,11 @@ public class ArtistService {
     }
 
     // 아티스트 상세 조회
+    // 검색 엔진 사이트맵에 넣을 아티스트 id 목록 (공개 정보)
+    public List<Long> getArtistIdsForSitemap() {
+        return festivalArtistRepository.findLinkedArtistIds();
+    }
+
     public ArtistDetailResponse getArtist(Long id) {
 
         Artist artist = artistRepository.findById(id)

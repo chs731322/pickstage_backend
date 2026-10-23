@@ -38,6 +38,12 @@ public class ArtistController {
         );
     }
 
+    // 사이트맵용 아티스트 id 목록 (로그인 없이 조회, 출연 공연이 있는 아티스트만)
+    @GetMapping("/ids")
+    public ResponseEntity<ApiResponse<List<Long>>> getArtistIds() {
+        return ResponseEntity.ok(ApiResponse.success(artistService.getArtistIdsForSitemap()));
+    }
+
     // 아티스트 상세 조회
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<ArtistDetailResponse>> getArtist(@PathVariable Long id) {
