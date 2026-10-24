@@ -398,9 +398,11 @@ public class FestivalService {
                                         .orElseThrow(() -> new IllegalStateException("존재하지 않는 공연장입니다."));
                         festival.setVenue(venue);
                 }
-                // 공연장 이름만 바꿔 보낸 경우: 같은 이름의 공연장을 연결하고, 없으면 KOPIS 정보로 새로 등록한다 (등록할 때와 같은 규칙)
+                // 공연장 이름만 보낸 경우: 같은 이름의 공연장을 연결하고, 없으면 KOPIS 정보로 새로 등록한다 (등록할 때와 같은 규칙).
+                // 이름이 그대로여도 아직 공연장에 연결되지 않은 공연이면 연결을 시도한다.
                 if (request.getVenueId() == null && !isBlank(request.getVenueName())
-                                && !request.getVenueName().equals(festival.getVenueName())) {
+                                && (festival.getVenue() == null
+                                                || !request.getVenueName().equals(festival.getVenueName()))) {
                         Venue linked = findOrRegisterVenue(request.getVenueName());
                         if (linked != null) {
                                 festival.setVenue(linked);
@@ -480,18 +482,21 @@ public class FestivalService {
                         if (entry.getArtistName() == null || entry.getArtistName().isBlank()) {
                                 continue;
                         }
-                        Artist artist = artistMatchService.findOrCreate(entry.getArtistName());
-                        if (!seen.add(artist.getId())) {
-                                continue;
+                        // "1차 라인업: A, B, C"처럼 한 칸에 여러 명이 들어와도 한 명씩 나눠 등록한다
+                        for (String name : FestivalDraftService.splitLineupName(entry.getArtistName())) {
+                                Artist artist = artistMatchService.findOrCreate(name);
+                                if (!seen.add(artist.getId())) {
+                                        continue;
+                                }
+                                festivalArtistRepository.save(FestivalArtist.builder()
+                                                .festival(festival)
+                                                .artist(artist)
+                                                .isHeadliner(false)
+                                                .performanceDate(entry.getPerformanceDate())
+                                                .billingOrder(++order)
+                                                .source("admin")
+                                                .build());
                         }
-                        festivalArtistRepository.save(FestivalArtist.builder()
-                                        .festival(festival)
-                                        .artist(artist)
-                                        .isHeadliner(false)
-                                        .performanceDate(entry.getPerformanceDate())
-                                        .billingOrder(++order)
-                                        .source("admin")
-                                        .build());
                 }
         }
 
