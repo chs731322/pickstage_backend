@@ -53,16 +53,21 @@ public class FestivalDraftService {
     private final VenueRepository venueRepository;
     private final FestivalRepository festivalRepository;
     private final ArtistMatchService artistMatchService;
+    private final KopisVenueService kopisVenueService;
+    private final TicketPageService ticketPageService;
 
     public FestivalDraftService(GeminiService geminiService, ObjectMapper objectMapper,
             UserRepository userRepository, VenueRepository venueRepository,
-            FestivalRepository festivalRepository, ArtistMatchService artistMatchService) {
+            FestivalRepository festivalRepository, ArtistMatchService artistMatchService,
+            KopisVenueService kopisVenueService, TicketPageService ticketPageService) {
         this.geminiService = geminiService;
         this.objectMapper = objectMapper;
         this.userRepository = userRepository;
         this.venueRepository = venueRepository;
         this.festivalRepository = festivalRepository;
         this.artistMatchService = artistMatchService;
+        this.kopisVenueService = kopisVenueService;
+        this.ticketPageService = ticketPageService;
     }
 
     @Transactional(readOnly = true)
@@ -86,8 +91,11 @@ public class FestivalDraftService {
             }
         }
 
+        // 붙여넣은 글에 예매처 주소가 있으면 그 페이지의 권종·가격·오픈 일정도 읽어서 함께 넘긴다
+        List<TicketPageService.TicketPage> ticketPages = hasText ? ticketPageService.fetchAll(request.getText()) : List.of();
+
         String json = geminiService.generateJson(
-                buildPrompt(hasText ? request.getText() : null, hasImage),
+                buildPrompt(hasText ? request.getText() : null, hasImage, ticketPages),
                 buildSchema(),
                 hasImage ? request.getImageBase64() : null,
                 hasImage ? request.getImageMimeType() : null);
@@ -100,6 +108,7 @@ public class FestivalDraftService {
         List<String> warnings = new ArrayList<>();
 
         Draft draft = toDraft(extracted, warnings);
+        draft = withTicketFixes(draft, ticketPages, warnings);
         List<VenueCandidate> venueCandidates = findVenueCandidates(draft.getVenueName(), draft.getRegion());
         // 이름이 정확히 일치하는(점수 100 이상) 공연장이 있으면 자동 선택
         Long venueId = (!venueCandidates.isEmpty() && venueCandidates.get(0).getScore() >= 100)
@@ -125,7 +134,24 @@ public class FestivalDraftService {
                 .build();
 
         if (draft.getVenueName() != null && venueCandidates.isEmpty()) {
-            warnings.add("일치하는 공연장을 찾지 못했어요. 공연장 이름과 주소를 확인해 주세요.");
+            // 우리 공연장 목록에 없으면 KOPIS에서 찾아 본다. 등록하면 이 정보로 새 공연장이 자동으로 만들어진다.
+            Optional<KopisVenueService.KopisVenue> kopis = kopisVenueService.find(draft.getVenueName());
+            if (kopis.isPresent()) {
+                KopisVenueService.KopisVenue k = kopis.get();
+                warnings.add("공연장 '" + draft.getVenueName() + "'은(는) 아직 등록돼 있지 않아요. 등록하면 KOPIS의 '" + k.getName()
+                        + "'(" + (k.getAddress() == null ? "주소 없음" : k.getAddress()) + ") 정보로 새 공연장이 자동으로 만들어져요. 다른 곳이면 공연장 이름을 고쳐 주세요.");
+                draft = Draft.builder()
+                        .title(draft.getTitle()).description(draft.getDescription())
+                        .venueId(draft.getVenueId()).venueName(draft.getVenueName())
+                        .address(draft.getAddress() == null ? k.getAddress() : draft.getAddress())
+                        .region(draft.getRegion() == null ? k.getRegion() : draft.getRegion())
+                        .startDate(draft.getStartDate()).endDate(draft.getEndDate())
+                        .genre(draft.getGenre()).tickets(draft.getTickets()).lineup(draft.getLineup())
+                        .build();
+            } else {
+                warnings.add("일치하는 공연장을 찾지 못했어요" + (kopisVenueService.isConfigured() ? "(KOPIS에서도 찾지 못했어요)" : "")
+                        + ". 공연장 이름과 주소를 확인해 주세요. 이대로 등록하면 공연장 이름만 저장돼요.");
+            }
         }
 
         List<DuplicateCandidate> duplicates = findDuplicates(draft.getTitle(), draft.getStartDate(), draft.getEndDate(), draft.getVenueId());
@@ -159,7 +185,7 @@ public class FestivalDraftService {
 
     // ---- 프롬프트 / 스키마 ----
 
-    private String buildPrompt(String text, boolean hasImage) {
+    private String buildPrompt(String text, boolean hasImage, List<TicketPageService.TicketPage> ticketPages) {
         StringBuilder sb = new StringBuilder();
         sb.append("너는 공연·페스티벌 정보를 정리하는 도우미야. 아래 자료에서 공연 등록에 필요한 정보를 추출해 JSON으로 답해줘.\n");
         sb.append("오늘 날짜는 ").append(LocalDate.now()).append("이야. 연도가 적혀 있지 않으면 오늘 이후로 가장 가까운 날짜로 해석해.\n\n");
@@ -170,11 +196,18 @@ public class FestivalDraftService {
         sb.append("- genre는 다음 중 하나: rock(록/메탈 중심), indie_band(인디/밴드/펑크 중심), hiphop(힙합/랩 중심), jazz(재즈 중심), edm(EDM·DJ 중심), general_music(아이돌·대중음악 등 종합), exception(클래식 등 그 외).\n");
         sb.append("- venueName은 공연장 이름이고, address는 자료에 도로명·지번 주소가 실제로 적혀 있을 때만 써. 장소 이름을 address에 넣지 말고, 주소가 없으면 address는 null로 둬.\n");
         sb.append("- region은 장소가 있는 시/도의 짧은 이름이야.\n");
-        sb.append("- tickets는 예매처(vendorName)별·권종(label)별로 나눠. price는 원 단위 숫자, openAt은 예매 오픈 일시(YYYY-MM-DDTHH:mm:ss).\n");
+        sb.append("- tickets는 예매처(vendorName)별·권종(label)별로 나눠. label은 '1일권', '2일권', 'R석'처럼 권종 이름이고 권종 구분이 없으면 '일반'이라고 써. price는 원 단위 숫자, openAt은 예매 오픈 일시(YYYY-MM-DDTHH:mm:ss).\n");
+        sb.append("  예매처 페이지가 함께 주어지면 그 안의 권종·가격·예매 오픈(선예매/일반) 일정과 라인업을 tickets와 lineup에 반영하고, bookingUrl에는 그 페이지 주소를 써. 가격이 여러 개면 권종별로 따로 넣어.\n");
         sb.append("- lineup은 실제 출연하는 아티스트만, 적힌 순서대로. 자료에 적힌 표기를 그대로 쓰고 번역하거나 한글로 음역하지 마(영문 이름은 영문 그대로). 한글 이름과 영문 이름이 같이 적혀 있을 때만 한글 이름을 써. SNS 아이디, 소속, 팀·스테이지 이름, TBA 같은 안내 문구는 빼.\n");
+        sb.append("  lineup 배열의 항목 하나에는 아티스트 한 팀(한 명) 이름만 넣어. 쉼표·슬래시·줄바꿈·점으로 나열된 이름은 반드시 각각 별도 항목으로 나눠서 넣고, 나열된 문장 전체를 한 항목에 넣지 마.\n");
+        sb.append("  '1차 라인업', '2차 라인업', '라인업', '출연진' 같은 제목·안내 문구는 아티스트 이름이 아니니까 빼.\n");
         sb.append("  날짜별 라인업이면 performanceDate에 그 날짜를, 모르면 null을 넣어.\n\n");
         if (text != null) {
             sb.append("[자료 텍스트]\n").append(text).append("\n");
+        }
+        for (TicketPageService.TicketPage page : ticketPages) {
+            sb.append("\n[예매처 페이지: ").append(page.getVendorName()).append(" ").append(page.getUrl()).append("]\n")
+                    .append(page.getText()).append("\n");
         }
         if (hasImage) {
             sb.append("\n[첨부된 이미지도 같은 공연의 자료야. 포스터나 라인업 이미지에 적힌 글자를 읽어서 함께 반영해.]\n");
@@ -277,12 +310,16 @@ public class FestivalDraftService {
         }
 
         List<LineupRequest> lineup = new ArrayList<>();
+        Set<String> seen = new java.util.HashSet<>();
         if (e.getLineup() != null) {
             for (ExtractedLineup l : e.getLineup()) {
-                if (l.getArtistName() == null || l.getArtistName().isBlank()) {
-                    continue;
+                LocalDate performanceDate = parseDate(l.getPerformanceDate(), null, null);
+                // AI가 "1차 라인업: A, B, C"처럼 나열 문장 전체를 한 항목에 넣어 줄 때가 있어서, 이름 단위로 나눈다
+                for (String name : splitLineupName(l.getArtistName())) {
+                    if (seen.add(name.toLowerCase() + "|" + performanceDate)) {
+                        lineup.add(new LineupRequest(name, performanceDate));
+                    }
                 }
-                lineup.add(new LineupRequest(l.getArtistName().trim(), parseDate(l.getPerformanceDate(), null, null)));
             }
         }
 
@@ -298,6 +335,73 @@ public class FestivalDraftService {
                 .tickets(tickets)
                 .lineup(lineup)
                 .build();
+    }
+
+    // 티켓이 조용히 사라지지 않도록: 권종이 비면 '일반', 예매처 이름·링크가 비면 예매처 페이지 주소에서 채우고,
+    // AI가 티켓을 하나도 못 찾았어도 예매처 페이지가 있으면 링크가 담긴 티켓 한 줄을 남긴다.
+    static Draft withTicketFixes(Draft draft, List<TicketPageService.TicketPage> pages, List<String> warnings) {
+        List<TicketDraft> fixed = new ArrayList<>();
+        for (TicketDraft t : draft.getTickets()) {
+            String url = t.getBookingUrl();
+            if (url == null && pages.size() == 1) {
+                url = pages.get(0).getUrl();
+            }
+            String vendor = t.getVendorName();
+            if ((vendor == null || vendor.isBlank()) && url != null) {
+                vendor = TicketPageService.vendorNameOf(url);
+            }
+            String label = t.getLabel();
+            if ((label == null || label.isBlank()) && (t.getPrice() != null || url != null)) {
+                label = "일반";
+            }
+            fixed.add(TicketDraft.builder().label(label).vendorName(vendor).price(t.getPrice())
+                    .bookingUrl(url).openAt(t.getOpenAt()).build());
+        }
+        if (fixed.isEmpty() && !pages.isEmpty()) {
+            for (TicketPageService.TicketPage page : pages) {
+                fixed.add(TicketDraft.builder().label("일반").vendorName(page.getVendorName()).bookingUrl(page.getUrl()).build());
+            }
+            warnings.add("예매처 페이지에서 권종·가격을 찾지 못해 예매 링크만 담았어요. 가격과 예매 오픈 일정을 직접 입력해 주세요.");
+        }
+        return Draft.builder()
+                .title(draft.getTitle()).description(draft.getDescription())
+                .venueId(draft.getVenueId()).venueName(draft.getVenueName())
+                .address(draft.getAddress()).region(draft.getRegion())
+                .startDate(draft.getStartDate()).endDate(draft.getEndDate())
+                .genre(draft.getGenre()).tickets(fixed).lineup(draft.getLineup())
+                .build();
+    }
+
+    private static final java.util.regex.Pattern LINEUP_LABEL = java.util.regex.Pattern.compile(
+            "^\\s*(\\d+\\s*차\\s*)?(라인\\s*업|line\\s*-?\\s*up|출연\\s*진|출연\\s*아티스트|아티스트)\\s*[:：\\-–]?\\s*",
+            java.util.regex.Pattern.CASE_INSENSITIVE);
+    private static final java.util.regex.Pattern LINEUP_SEPARATOR = java.util.regex.Pattern.compile("[,，、;；\\n\\r]+|\\s+/\\s+");
+    private static final Set<String> LINEUP_FILLER = Set.of("등", "외", "tba", "tbd", "추후공개", "추후공지", "미정", "라인업");
+
+    // 한 항목에 나열 문장이 통째로 들어온 경우를 아티스트 이름 단위로 나눈다.
+    // 쉼표가 정확히 하나뿐이고 한글이 없는 이름(예: "Earth, Wind & Fire")은 한 팀 이름일 수 있어 나누지 않는다.
+    static List<String> splitLineupName(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return List.of();
+        }
+        String text = LINEUP_LABEL.matcher(raw.replace('\u00A0', ' ').trim()).replaceFirst("");
+        String[] parts = LINEUP_SEPARATOR.split(text);
+        if (parts.length == 2 && !text.contains("\n") && !text.contains("/") && !containsHangul(text)) {
+            parts = new String[] { text };
+        }
+        List<String> names = new ArrayList<>();
+        for (String part : parts) {
+            String name = part.replaceFirst("^[\\s•·\\-–*▶▷]+", "").trim();
+            String filler = name.replaceAll("\\s+", "").toLowerCase();
+            if (!name.isEmpty() && !LINEUP_FILLER.contains(filler)) {
+                names.add(name);
+            }
+        }
+        return names;
+    }
+
+    private static boolean containsHangul(String s) {
+        return s.chars().anyMatch(c -> c >= 0xAC00 && c <= 0xD7A3);
     }
 
     private static LocalDate parseDate(String value, String label, List<String> warnings) {

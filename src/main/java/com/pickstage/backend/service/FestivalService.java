@@ -33,11 +33,14 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.pickstage.backend.service.KopisVenueService.KopisVenue;
+
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 @Service
@@ -53,6 +56,7 @@ public class FestivalService {
         private final NotificationRepository notificationRepository;
         private final PostRepository postRepository;
         private final ArtistMatchService artistMatchService;
+        private final KopisVenueService kopisVenueService;
 
         public FestivalService(FestivalRepository festivalRepository,
                         FestivalImageRepository festivalImageRepository,
@@ -63,7 +67,8 @@ public class FestivalService {
                         BookmarkRepository bookmarkRepository,
                         NotificationRepository notificationRepository,
                         PostRepository postRepository,
-                        ArtistMatchService artistMatchService) {
+                        ArtistMatchService artistMatchService,
+                        KopisVenueService kopisVenueService) {
                 this.festivalRepository = festivalRepository;
                 this.festivalImageRepository = festivalImageRepository;
                 this.festivalArtistRepository = festivalArtistRepository;
@@ -74,6 +79,7 @@ public class FestivalService {
                 this.notificationRepository = notificationRepository;
                 this.postRepository = postRepository;
                 this.artistMatchService = artistMatchService;
+                this.kopisVenueService = kopisVenueService;
         }
 
         // 공연 목록 조회
@@ -99,7 +105,14 @@ public class FestivalService {
                         case "popular" -> org.springframework.data.jpa.domain.JpaSort
                                         .unsafe(Sort.Direction.ASC, "(CASE WHEN f.endDate < CURRENT_DATE THEN 1 ELSE 0 END)")
                                         .and(Sort.by(Sort.Direction.DESC, "bookmarkCount", "viewCount"));
-                        case "start" -> Sort.by(Sort.Direction.ASC, "startDate"); // 시작이 임박한 순
+                        // 임박순: 진행 중 -> 곧 시작할 공연(시작이 빠른 순) -> 이미 끝난 공연(최근에 시작한 순) -> 날짜 없는 공연
+                        case "start" -> org.springframework.data.jpa.domain.JpaSort
+                                        .unsafe(Sort.Direction.ASC,
+                                                        "(CASE WHEN f.startDate IS NULL THEN 3 WHEN f.endDate < CURRENT_DATE THEN 2 WHEN f.startDate <= CURRENT_DATE THEN 0 ELSE 1 END)")
+                                        .and(org.springframework.data.jpa.domain.JpaSort.unsafe(Sort.Direction.ASC,
+                                                        "(CASE WHEN f.endDate >= CURRENT_DATE THEN f.startDate END)"))
+                                        .and(org.springframework.data.jpa.domain.JpaSort.unsafe(Sort.Direction.DESC,
+                                                        "(CASE WHEN f.endDate < CURRENT_DATE THEN f.startDate END)"));
                         case "ticket_open" -> {
                                 openAfter = now; // 오픈일이 없거나 이미 지난 공연은 제외
                                 yield Sort.by(Sort.Direction.ASC, "ticketOpenDate");
@@ -279,15 +292,22 @@ public class FestivalService {
                 if (request.getVenueId() != null) {
                         venue = venueRepository.findById(request.getVenueId())
                                         .orElseThrow(() -> new IllegalStateException("존재하지 않는 공연장입니다."));
+                } else {
+                        // 공연장을 고르지 않고 이름만 온 경우: 같은 이름이 있으면 그걸 쓰고, 없으면 KOPIS에서 찾아 바로 등록한다
+                        venue = findOrRegisterVenue(request.getVenueName());
                 }
+
+                // 자료에 주소·지역이 없으면 연결된 공연장의 값을 쓴다
+                String address = isBlank(request.getAddress()) && venue != null ? venue.getAddress() : request.getAddress();
+                String region = isBlank(request.getRegion()) && venue != null ? venue.getRegion() : request.getRegion();
 
                 Festival festival = Festival.builder()
                                 .title(request.getTitle())
                                 .description(request.getDescription())
                                 .venue(venue)
                                 .venueName(request.getVenueName())
-                                .address(request.getAddress())
-                                .region(request.getRegion())
+                                .address(address)
+                                .region(region)
                                 .startDate(request.getStartDate())
                                 .endDate(request.getEndDate())
                                 .genre(request.getGenre())
@@ -302,6 +322,61 @@ public class FestivalService {
                 saveLineup(saved, request.getLineup());
 
                 return saved.getId();
+        }
+
+        // 이름으로 기존 공연장을 찾고, 없으면 KOPIS 공연시설 정보로 새 공연장을 만든다. KOPIS에서도 못 찾으면 null(공연장 이름만 저장).
+        private Venue findOrRegisterVenue(String venueName) {
+                if (isBlank(venueName)) {
+                        return null;
+                }
+                List<Venue> venues = venueRepository.findAll();
+                Venue existing = findByNormalizedName(venues, venueName);
+                if (existing != null) {
+                        return existing;
+                }
+
+                Optional<KopisVenue> found = kopisVenueService.find(venueName);
+                if (found.isEmpty()) {
+                        return null;
+                }
+                KopisVenue kopis = found.get();
+                // KOPIS의 정식 이름이 이미 우리 공연장 목록에 있으면 그 공연장을 쓴다
+                Venue sameName = findByNormalizedName(venues, kopis.getName());
+                if (sameName != null) {
+                        return sameName;
+                }
+                LocalDateTime now = LocalDateTime.now();
+                return venueRepository.save(Venue.builder()
+                                .name(kopis.getName())
+                                .address(kopis.getAddress())
+                                .region(kopis.getRegion())
+                                .latitude(kopis.getLatitude())
+                                .longitude(kopis.getLongitude())
+                                .capacity(kopis.getCapacity())
+                                .createdAt(now)
+                                .updatedAt(now)
+                                .build());
+        }
+
+        private static Venue findByNormalizedName(List<Venue> venues, String name) {
+                String target = normalizeVenueName(name);
+                if (target.isEmpty()) {
+                        return null;
+                }
+                for (Venue v : venues) {
+                        if (normalizeVenueName(v.getName()).equals(target)) {
+                                return v;
+                        }
+                }
+                return null;
+        }
+
+        private static String normalizeVenueName(String name) {
+                return name == null ? "" : name.replaceAll("[\\s·\\-_.,()\\[\\]]", "").toLowerCase();
+        }
+
+        private static boolean isBlank(String s) {
+                return s == null || s.isBlank();
         }
 
         // 관리자 공연 수정
@@ -322,6 +397,20 @@ public class FestivalService {
                         Venue venue = venueRepository.findById(request.getVenueId())
                                         .orElseThrow(() -> new IllegalStateException("존재하지 않는 공연장입니다."));
                         festival.setVenue(venue);
+                }
+                // 공연장 이름만 바꿔 보낸 경우: 같은 이름의 공연장을 연결하고, 없으면 KOPIS 정보로 새로 등록한다 (등록할 때와 같은 규칙)
+                if (request.getVenueId() == null && !isBlank(request.getVenueName())
+                                && !request.getVenueName().equals(festival.getVenueName())) {
+                        Venue linked = findOrRegisterVenue(request.getVenueName());
+                        if (linked != null) {
+                                festival.setVenue(linked);
+                                if (request.getAddress() == null && linked.getAddress() != null) {
+                                        festival.setAddress(linked.getAddress());
+                                }
+                                if (request.getRegion() == null && linked.getRegion() != null) {
+                                        festival.setRegion(linked.getRegion());
+                                }
+                        }
                 }
                 if (request.getVenueName() != null) {
                         festival.setVenueName(request.getVenueName());
