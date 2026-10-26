@@ -33,6 +33,7 @@ public class UserService {
         private final ChecklistRepository checklistRepository;
         private final NotificationRepository notificationRepository;
         private final BookmarkService bookmarkService;
+        private final UploadedImagePolicy uploadedImagePolicy;
 
         public UserService(
                         UserRepository userRepository,
@@ -43,7 +44,8 @@ public class UserService {
                         InterestArtistRepository interestArtistRepository,
                         ChecklistRepository checklistRepository,
                         NotificationRepository notificationRepository,
-                        BookmarkService bookmarkService) {
+                        BookmarkService bookmarkService,
+                        UploadedImagePolicy uploadedImagePolicy) {
 
                 this.userRepository = userRepository;
                 this.refreshTokenRepository = refreshTokenRepository;
@@ -54,6 +56,7 @@ public class UserService {
                 this.checklistRepository = checklistRepository;
                 this.notificationRepository = notificationRepository;
                 this.bookmarkService = bookmarkService;
+                this.uploadedImagePolicy = uploadedImagePolicy;
         }
 
         // 내 정보 조회
@@ -93,6 +96,13 @@ public class UserService {
 
                         throw new IllegalArgumentException(
                                         "이미 사용 중인 닉네임입니다.");
+                }
+
+                // 프로필 이미지는 우리 저장소에 올린 사진만 쓸 수 있다 (빈 값은 기본 이미지로 되돌리기)
+                String profileImage = request.getProfileImage();
+                if (profileImage != null && !profileImage.isEmpty()
+                                && !uploadedImagePolicy.isUploadedImageUrl(profileImage)) {
+                        throw new IllegalArgumentException("프로필 사진은 업로드한 이미지만 사용할 수 있습니다.");
                 }
 
                 // 닉네임 및 프로필 이미지 수정
@@ -142,6 +152,9 @@ public class UserService {
 
                 // 비밀번호 변경
                 user.updatePassword(encodedPassword);
+
+                // 다른 기기에 남아 있는 로그인(리프레시 토큰)을 끊는다. 지금 쓰는 액세스 토큰은 만료(30분)까지 유효하다.
+                refreshTokenRepository.deleteByUserId(userId);
         }
 
         // 회원 탈퇴

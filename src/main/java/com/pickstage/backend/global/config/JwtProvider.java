@@ -15,6 +15,9 @@ import java.util.Date;
 @Component
 public class JwtProvider {
 
+    private static final String TYPE_ACCESS = "access";
+    private static final String TYPE_REFRESH = "refresh";
+
     private final SecretKey secretKey;
     private final long accessExpiration;
     private final long refreshExpiration;
@@ -40,6 +43,7 @@ public class JwtProvider {
 
         return Jwts.builder()
                 .subject(String.valueOf(userId))
+                .claim("type", TYPE_ACCESS)
                 .claim("role", role)
                 .issuedAt(new Date())
                 .expiration(
@@ -57,6 +61,7 @@ public class JwtProvider {
 
         return Jwts.builder()
                 .subject(String.valueOf(userId))
+                .claim("type", TYPE_REFRESH)
                 .issuedAt(new Date())
                 .expiration(
                         new Date(
@@ -106,6 +111,27 @@ public class JwtProvider {
         }
 
         return false;
+    }
+
+    // 액세스 토큰인지 확인한다. 리프레시 토큰을 API 인증에 쓰지 못하게 하려는 검사다.
+    // type 클레임이 생기기 전에 발급된 토큰은 role 클레임이 있으면 액세스 토큰으로 본다 (리프레시 토큰에는 role이 없다).
+    public boolean isAccessToken(String token) {
+        Claims claims = getClaims(token);
+        String type = claims.get("type", String.class);
+        if (type == null) {
+            return claims.get("role") != null;
+        }
+        return TYPE_ACCESS.equals(type);
+    }
+
+    // 리프레시 토큰인지 확인한다 (토큰 재발급에는 리프레시 토큰만 쓸 수 있다)
+    public boolean isRefreshToken(String token) {
+        Claims claims = getClaims(token);
+        String type = claims.get("type", String.class);
+        if (type == null) {
+            return claims.get("role") == null;
+        }
+        return TYPE_REFRESH.equals(type);
     }
 
     // 토큰 만료 여부 확인

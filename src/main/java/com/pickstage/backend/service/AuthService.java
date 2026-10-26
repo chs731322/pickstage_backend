@@ -473,6 +473,13 @@ public class AuthService {
             );
         }
 
+        // 액세스 토큰으로 재발급을 요청하는 경우를 막는다
+        if (!jwtProvider.isRefreshToken(refreshToken)) {
+            throw new IllegalArgumentException(
+                    "유효하지 않은 토큰입니다."
+            );
+        }
+
         Long userId = jwtProvider.getUserId(refreshToken);
 
         User user = userRepository.findById(userId)
@@ -620,6 +627,9 @@ public class AuthService {
 
         // 비밀번호 변경
         user.updatePassword(encodedPassword);
+
+        // 비밀번호를 잊어서 재설정하는 경우, 이미 로그인해 둔 다른 기기(탈취된 세션 포함)도 다시 로그인하게 한다
+        refreshTokenRepository.deleteByUserId(user.getId());
 
         // 재설정 토큰 사용 완료 처리
         resetToken.markAsUsed();
