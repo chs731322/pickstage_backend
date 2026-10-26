@@ -61,7 +61,8 @@ public class UserProfileService {
                 .profileImage(user.getProfileImage())
                 .createdAt(user.getCreatedAt())
                 .self(self)
-                .visible(self ? PrivacySettings.allVisible() : PrivacySettings.of(privacyOf(targetId)))
+                // 본인이 봐도 실제 설정을 그대로 돌려준다 (내용은 본인이라 다 볼 수 있지만, 다른 회원에게 보이는지는 알려 줘야 한다)
+                .visible(PrivacySettings.of(privacyOf(targetId)))
                 .build();
     }
 

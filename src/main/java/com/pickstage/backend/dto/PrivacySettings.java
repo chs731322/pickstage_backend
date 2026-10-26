@@ -23,13 +23,4 @@ public class PrivacySettings {
                 .showReviews(privacy.isShowReviews())
                 .build();
     }
-
-    public static PrivacySettings allVisible() {
-        return PrivacySettings.builder()
-                .showBookmarks(true)
-                .showArtists(true)
-                .showPosts(true)
-                .showReviews(true)
-                .build();
-    }
 }
