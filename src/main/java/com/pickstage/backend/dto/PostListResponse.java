@@ -11,6 +11,8 @@ public class PostListResponse {
     private Long id;
     private String category;
     private String title;
+    // 작성자 프로필 링크용 (탈퇴한 회원이면 null)
+    private Long authorId;
     private String authorNickname;
     private String authorProfileImage;
     private Long festivalId;

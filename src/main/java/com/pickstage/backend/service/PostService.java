@@ -91,6 +91,7 @@ public class PostService {
                 .id(post.getId())
                 .category(post.getCategory().name())
                 .title(post.getTitle())
+                .authorId(authorIdOf(authors, post.getUserId()))
                 .authorNickname(nicknameOf(authors, post.getUserId()))
                 .authorProfileImage(profileImageOf(authors, post.getUserId()))
                 .festivalId(post.getFestivalId())
@@ -136,6 +137,7 @@ public class PostService {
                 .category(post.getCategory().name())
                 .title(post.getTitle())
                 .content(post.getContent())
+                .authorId(authorIdOf(authors, post.getUserId()))
                 .authorNickname(nicknameOf(authors, post.getUserId()))
                 .authorProfileImage(profileImageOf(authors, post.getUserId()))
                 .festivalId(post.getFestivalId())
@@ -150,6 +152,7 @@ public class PostService {
                                 .id(comment.getId())
                                 .parentId(comment.getParentId())
                                 .content(comment.getContent())
+                                .authorId(authorIdOf(authors, comment.getUserId()))
                                 .authorNickname(nicknameOf(authors, comment.getUserId()))
                                 .authorProfileImage(profileImageOf(authors, comment.getUserId()))
                                 .createdAt(comment.getCreatedAt())
@@ -329,6 +332,11 @@ public class PostService {
             return null;
         }
         return authors.computeIfAbsent(userId, id -> userRepository.findById(id).orElse(null));
+    }
+
+    private Long authorIdOf(Map<Long, User> authors, Long userId) {
+        User author = authorOf(authors, userId);
+        return author == null || author.getDeletedAt() != null ? null : author.getId();
     }
 
     private String nicknameOf(Map<Long, User> authors, Long userId) {
