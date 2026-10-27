@@ -8,6 +8,7 @@ import java.util.regex.Pattern;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.JpaSort;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -64,14 +65,15 @@ public class AdminArtistService {
 
     @Transactional(readOnly = true)
     public PageResponse<AdminArtistResponse> list(
-            Long requesterId, String keyword, boolean unlinkedOnly, int page, int size) {
+            Long requesterId, String keyword, boolean unlinkedOnly, boolean noPhotoOnly, boolean noSpotifyOnly,
+            String sort, int page, int size) {
         requireAdmin(requesterId);
 
         // LIKE 검색에서 %·_가 와일드카드로 쓰이지 않게 뺀다
         String cleaned = keyword == null ? "" : keyword.trim().toLowerCase().replace("%", "").replace("_", "");
-        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100),
-                Sort.by(Sort.Direction.DESC, "id"));
-        var result = artistRepository.searchForAdmin(cleaned.isEmpty() ? null : cleaned, unlinkedOnly, pageable);
+        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100), listSort(sort));
+        var result = artistRepository.searchForAdmin(cleaned.isEmpty() ? null : cleaned, unlinkedOnly, noPhotoOnly,
+                noSpotifyOnly, pageable);
 
         List<Long> ids = result.getContent().stream().map(Artist::getId).toList();
         Map<Long, Long> festivalCounts = toCountMap(ids.isEmpty() ? List.of() : festivalArtistRepository.countByArtistIds(ids));
@@ -81,6 +83,23 @@ public class AdminArtistService {
                 artist,
                 festivalCounts.getOrDefault(artist.getId(), 0L),
                 interestCounts.getOrDefault(artist.getId(), 0L))));
+    }
+
+    // 정렬: latest(최신 등록순, 기본) / festivals(출연 공연 많은 순) / interests(관심 등록 많은 순) / noPhoto(프로필 사진 없는 아티스트 먼저).
+    // 값이 같으면 최근에 등록된 아티스트가 먼저 나온다.
+    static Sort listSort(String sort) {
+        Sort byNewest = Sort.by(Sort.Direction.DESC, "id");
+        if ("festivals".equals(sort)) {
+            return JpaSort.unsafe(Sort.Direction.DESC, "(SELECT COUNT(fa) FROM FestivalArtist fa WHERE fa.artist = a)").and(byNewest);
+        }
+        if ("interests".equals(sort)) {
+            return JpaSort.unsafe(Sort.Direction.DESC, "(SELECT COUNT(ia) FROM InterestArtist ia WHERE ia.artistId = a.id)").and(byNewest);
+        }
+        if ("noPhoto".equals(sort)) {
+            return JpaSort.unsafe(Sort.Direction.ASC,
+                    "(CASE WHEN a.profileImageUrl IS NULL OR a.profileImageUrl = '' THEN 0 ELSE 1 END)").and(byNewest);
+        }
+        return byNewest;
     }
 
     @Transactional

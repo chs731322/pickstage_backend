@@ -27,8 +27,11 @@ public interface ArtistRepository extends JpaRepository<Artist, Long> {
     @Query("SELECT a FROM Artist a WHERE "
             + "(:keyword IS NULL OR LOWER(a.name) LIKE CONCAT('%', :keyword, '%') "
             + "OR LOWER(a.englishName) LIKE CONCAT('%', :keyword, '%')) "
-            + "AND (:unlinkedOnly = false OR NOT EXISTS (SELECT 1 FROM FestivalArtist fa WHERE fa.artist = a))")
+            + "AND (:unlinkedOnly = false OR NOT EXISTS (SELECT 1 FROM FestivalArtist fa WHERE fa.artist = a)) "
+            + "AND (:noPhotoOnly = false OR a.profileImageUrl IS NULL OR a.profileImageUrl = '') "
+            + "AND (:noSpotifyOnly = false OR a.spotifyUrl IS NULL OR a.spotifyUrl = '')")
     Page<Artist> searchForAdmin(@Param("keyword") String keyword, @Param("unlinkedOnly") boolean unlinkedOnly,
+            @Param("noPhotoOnly") boolean noPhotoOnly, @Param("noSpotifyOnly") boolean noSpotifyOnly,
             Pageable pageable);
 
     // 별칭 정리 (삭제·합치기용)

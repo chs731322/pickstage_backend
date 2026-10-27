@@ -32,15 +32,21 @@ public class AdminArtistController {
         this.adminArtistService = adminArtistService;
     }
 
-    // 아티스트 목록·검색 (unlinkedOnly=true면 공연에 연결되지 않은 아티스트만)
+    // 아티스트 목록·검색·정렬
+    // 필터: unlinkedOnly(공연 연결 없음), noPhotoOnly(프로필 사진 없음), noSpotifyOnly(스포티파이 링크 없음)
+    // 정렬 sort: latest(기본) / festivals(출연 공연 많은 순) / interests(관심 많은 순) / noPhoto(사진 없는 순)
     @GetMapping
     public ResponseEntity<ApiResponse<PageResponse<AdminArtistResponse>>> list(
             @AuthenticationPrincipal Long userId,
             @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "false") boolean unlinkedOnly,
+            @RequestParam(defaultValue = "false") boolean noPhotoOnly,
+            @RequestParam(defaultValue = "false") boolean noSpotifyOnly,
+            @RequestParam(defaultValue = "latest") String sort,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        return ResponseEntity.ok(ApiResponse.success(adminArtistService.list(userId, keyword, unlinkedOnly, page, size)));
+        return ResponseEntity.ok(ApiResponse.success(
+                adminArtistService.list(userId, keyword, unlinkedOnly, noPhotoOnly, noSpotifyOnly, sort, page, size)));
     }
 
     // 아티스트 정보 수정 (보낸 항목만 바뀐다)
