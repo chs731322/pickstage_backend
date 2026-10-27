@@ -6,6 +6,8 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,6 +35,10 @@ public class SpotifyService {
     private static final Logger log = LoggerFactory.getLogger(SpotifyService.class);
     private static final String TOKEN_URL = "https://accounts.spotify.com/api/token";
     private static final String SEARCH_URL = "https://api.spotify.com/v1/search?q={q}&type=artist&limit=5";
+    private static final String ARTIST_URL = "https://api.spotify.com/v1/artists/{id}";
+    // open.spotify.com/artist/ID, open.spotify.com/intl-ko/artist/ID?si=..., spotify:artist:ID
+    private static final Pattern ARTIST_LINK = Pattern.compile(
+            "(?:open\\.spotify\\.com/(?:intl-[a-z]{2,5}/)?artist/|spotify:artist:)([A-Za-z0-9]{22})");
     private static final Duration MIN_INTERVAL = Duration.ofMillis(1500);
     private static final int PREFERRED_IMAGE_WIDTH = 320;
 
@@ -67,24 +73,34 @@ public class SpotifyService {
         private final String spotifyUrl;
     }
 
-    // 이름으로 아티스트 후보를 최대 5명 찾는다
+    // 이름으로 아티스트 후보를 최대 5명 찾는다. 검색어가 Spotify 아티스트 링크면 그 아티스트 한 명만 정확히 가져온다.
     public synchronized List<ArtistCandidate> searchArtists(String query) {
+        String artistId = extractArtistId(query);
+        if (artistId != null) {
+            JsonNode artist = get(ARTIST_URL, artistId);
+            ArtistCandidate candidate = parseArtist(artist);
+            return candidate == null ? List.of() : List.of(candidate);
+        }
+        return parseCandidates(get(SEARCH_URL, query));
+    }
+
+    // 인증·호출 간격·차단(429) 처리를 한곳에서 하고 응답 JSON을 돌려준다
+    private JsonNode get(String urlTemplate, Object variable) {
         if (clientId == null || clientId.isBlank() || clientSecret == null || clientSecret.isBlank()) {
             throw new ExternalServiceUnavailableException("Spotify 연동이 아직 설정되지 않았어요. (서버의 SPOTIFY_CLIENT_ID / SPOTIFY_CLIENT_SECRET 필요)");
         }
-        Instant now = Instant.now();
-        if (now.isBefore(bannedUntil)) {
+        if (Instant.now().isBefore(bannedUntil)) {
             throw new ExternalServiceUnavailableException(banMessage());
         }
 
         paceCalls();
         try {
             String body = restClient.get()
-                    .uri(SEARCH_URL, query)
+                    .uri(urlTemplate, variable)
                     .header("Authorization", "Bearer " + token())
                     .retrieve()
                     .body(String.class);
-            return parseCandidates(objectMapper.readTree(body));
+            return objectMapper.readTree(body);
         } catch (RestClientResponseException e) {
             if (e.getStatusCode().value() == 429) {
                 long retryAfter = parseRetryAfter(e.getResponseHeaders() == null ? null : e.getResponseHeaders().getFirst("Retry-After"));
@@ -95,13 +111,17 @@ public class SpotifyService {
             if (e.getStatusCode().value() == 401) {
                 accessToken = null; // 토큰이 만료됐을 수 있어 다음 호출에서 다시 받는다
             }
-            log.warn("Spotify 검색 실패: HTTP {}", e.getStatusCode().value());
-            throw new ExternalServiceUnavailableException("Spotify에서 검색하지 못했어요. 잠시 후 다시 시도해 주세요.");
-        } catch (ExternalServiceUnavailableException e) {
+            // 없는 ID나 잘못된 ID는 Spotify가 400 또는 404로 답한다
+            if (e.getStatusCode().value() == 404 || e.getStatusCode().value() == 400) {
+                throw new IllegalArgumentException("Spotify에서 해당 아티스트를 찾을 수 없어요. 링크를 확인해 주세요.");
+            }
+            log.warn("Spotify 호출 실패: HTTP {}", e.getStatusCode().value());
+            throw new ExternalServiceUnavailableException("Spotify에서 가져오지 못했어요. 잠시 후 다시 시도해 주세요.");
+        } catch (ExternalServiceUnavailableException | IllegalArgumentException e) {
             throw e;
         } catch (Exception e) {
-            log.warn("Spotify 검색 실패: {}", e.getClass().getSimpleName());
-            throw new ExternalServiceUnavailableException("Spotify에서 검색하지 못했어요. 잠시 후 다시 시도해 주세요.");
+            log.warn("Spotify 호출 실패: {}", e.getClass().getSimpleName());
+            throw new ExternalServiceUnavailableException("Spotify에서 가져오지 못했어요. 잠시 후 다시 시도해 주세요.");
         }
     }
 
@@ -164,21 +184,37 @@ public class SpotifyService {
         }
     }
 
+    // Spotify 아티스트 링크(또는 spotify:artist:ID)에서 아티스트 ID를 꺼낸다. 링크가 아니면 null
+    static String extractArtistId(String text) {
+        if (text == null) {
+            return null;
+        }
+        Matcher matcher = ARTIST_LINK.matcher(text);
+        return matcher.find() ? matcher.group(1) : null;
+    }
+
     static List<ArtistCandidate> parseCandidates(JsonNode root) {
         List<ArtistCandidate> candidates = new ArrayList<>();
         for (JsonNode item : root.path("artists").path("items")) {
-            String id = item.path("id").asString("");
-            if (id.isBlank()) {
-                continue;
+            ArtistCandidate candidate = parseArtist(item);
+            if (candidate != null) {
+                candidates.add(candidate);
             }
-            candidates.add(ArtistCandidate.builder()
-                    .spotifyId(id)
-                    .name(item.path("name").asString(""))
-                    .imageUrl(pickImage(item.path("images")))
-                    .spotifyUrl(item.path("external_urls").path("spotify").asString(null))
-                    .build());
         }
         return candidates;
+    }
+
+    static ArtistCandidate parseArtist(JsonNode item) {
+        String id = item.path("id").asString("");
+        if (id.isBlank()) {
+            return null;
+        }
+        return ArtistCandidate.builder()
+                .spotifyId(id)
+                .name(item.path("name").asString(""))
+                .imageUrl(pickImage(item.path("images")))
+                .spotifyUrl(item.path("external_urls").path("spotify").asString(null))
+                .build();
     }
 
     // 사진이 여러 크기로 오면 320px에 가장 가까운 것을 쓴다 (이미 저장된 사진들과 같은 크기)

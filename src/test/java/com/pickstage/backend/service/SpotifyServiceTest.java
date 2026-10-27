@@ -42,4 +42,14 @@ class SpotifyServiceTest {
         assertEquals(3600, SpotifyService.parseRetryAfter(null));
         assertEquals(3600, SpotifyService.parseRetryAfter("abc"));
     }
+
+    @Test
+    void Spotify_아티스트_링크에서_ID를_꺼낸다() {
+        assertEquals("6zn0ihyAApAYV51zpXxdEp", SpotifyService.extractArtistId("https://open.spotify.com/artist/6zn0ihyAApAYV51zpXxdEp"));
+        assertEquals("6zn0ihyAApAYV51zpXxdEp", SpotifyService.extractArtistId("https://open.spotify.com/intl-ko/artist/6zn0ihyAApAYV51zpXxdEp?si=abc123"));
+        assertEquals("6zn0ihyAApAYV51zpXxdEp", SpotifyService.extractArtistId("spotify:artist:6zn0ihyAApAYV51zpXxdEp"));
+        assertNull(SpotifyService.extractArtistId("10cm"));
+        assertNull(SpotifyService.extractArtistId("https://open.spotify.com/album/6zn0ihyAApAYV51zpXxdEp"));
+        assertNull(SpotifyService.extractArtistId(null));
+    }
 }
