@@ -44,4 +44,19 @@ class FestivalDraftLineupTest {
         assertTrue(FestivalDraftService.splitLineupName("  ").isEmpty());
         assertTrue(FestivalDraftService.splitLineupName(null).isEmpty());
     }
+
+    @Test
+    void 날짜_제목_줄은_이름으로_넣지_않는다() {
+        assertTrue(FestivalDraftService.splitLineupName("12/18 (금)").isEmpty());
+        assertTrue(FestivalDraftService.splitLineupName("12/19 (토)").isEmpty());
+        assertTrue(FestivalDraftService.splitLineupName("2026.12.20 SAT").isEmpty());
+        assertTrue(FestivalDraftService.splitLineupName("DAY 1").isEmpty());
+        assertEquals(List.of("HANABIE."), FestivalDraftService.splitLineupName("HANABIE.\n12/18 (금)"));
+    }
+
+    @Test
+    void 인스타_계정과_끝_이모지는_이름에서_뗀다() {
+        assertEquals(List.of("아시안체어샷"), FestivalDraftService.splitLineupName("아시안체어샷 (@asianchairshot) \uD83C\uDD95"));
+        assertEquals(List.of("이오욱(LOW)"), FestivalDraftService.splitLineupName("이오욱(LOW)"));
+    }
 }

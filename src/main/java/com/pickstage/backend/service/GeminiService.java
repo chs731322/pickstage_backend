@@ -19,7 +19,7 @@ import com.pickstage.backend.dto.ReviewKeywordHighlight;
 public class GeminiService {
 
     private static final String GEMINI_URL =
-            "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={key}";
+            "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent";
 
     private final RestClient restClient;
     private final ObjectMapper objectMapper;
@@ -92,7 +92,9 @@ public class GeminiService {
     private String callForText(Map<String, Object> requestBody) {
         try {
             GeminiGenerateContentResponse response = restClient.post()
-                    .uri(GEMINI_URL, model, apiKey)
+                    .uri(GEMINI_URL, model)
+                    // 인증키는 주소(쿼리)가 아니라 헤더로 보낸다. 주소에 넣으면 연결 오류 메시지·로그에 키가 그대로 남는다.
+                    .header("x-goog-api-key", apiKey)
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(requestBody)
                     .retrieve()

@@ -141,9 +141,13 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<Void>> handleDataIntegrityViolation(
             org.springframework.dao.DataIntegrityViolationException e) {
 
+        // DB 오류 메시지에는 SQL 문장과 테이블·컬럼 이름이 들어 있어 응답으로 내보내지 않는다 (자세한 내용은 서버 로그에서 본다)
+        log.warn("데이터 무결성 위반: {}", e.getMostSpecificCause().getClass().getSimpleName());
+        log.debug("데이터 무결성 위반 상세", e);
+
         return ResponseEntity
                 .status(HttpStatus.CONFLICT)
-                .body(ApiResponse.fail(e.getMessage()));
+                .body(ApiResponse.fail("이미 존재하거나 올바르지 않은 값이에요."));
     }
 
     // 요청 본문을 읽을 수 없는 경우 (날짜 형식 오류, 잘못된 JSON 등)
@@ -164,6 +168,14 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ApiResponse.fail("이메일 발송에 실패했습니다."));
+    }
+
+    // 외부 서비스를 지금 쓸 수 없는 경우 (설정 누락, 호출 한도 등)
+    @ExceptionHandler(ExternalServiceUnavailableException.class)
+    public ResponseEntity<ApiResponse<Void>> handleExternalUnavailable(ExternalServiceUnavailableException e) {
+        return ResponseEntity
+                .status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(ApiResponse.fail(e.getMessage()));
     }
 
     // 그 외 모든 에러

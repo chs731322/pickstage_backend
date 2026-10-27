@@ -14,6 +14,24 @@ public interface FestivalArtistRepository extends JpaRepository<FestivalArtist, 
         @Query("SELECT DISTINCT fa.artist.id FROM FestivalArtist fa ORDER BY fa.artist.id")
         List<Long> findLinkedArtistIds();
 
+        // 관리자 아티스트 목록: 아티스트별 출연 공연 수
+        @Query("SELECT fa.artist.id, COUNT(fa) FROM FestivalArtist fa WHERE fa.artist.id IN :artistIds GROUP BY fa.artist.id")
+        List<Object[]> countByArtistIds(@Param("artistIds") List<Long> artistIds);
+
+        @Query("SELECT COUNT(fa) FROM FestivalArtist fa WHERE fa.artist.id = :artistId")
+        long countByArtistId(@Param("artistId") Long artistId);
+
+        // 합치기: 같은 공연에 이미 합칠 대상이 출연 중이면 이쪽 행은 지우고, 나머지는 대상으로 옮긴다
+        @org.springframework.data.jpa.repository.Modifying(clearAutomatically = true, flushAutomatically = true)
+        @Query(value = "DELETE FROM festival_artists WHERE artist_id = :source AND festival_id IN "
+                        + "(SELECT festival_id FROM (SELECT festival_id FROM festival_artists WHERE artist_id = :target) t)",
+                        nativeQuery = true)
+        void deleteDuplicatesBeforeMerge(@Param("source") Long source, @Param("target") Long target);
+
+        @org.springframework.data.jpa.repository.Modifying(clearAutomatically = true, flushAutomatically = true)
+        @Query(value = "UPDATE festival_artists SET artist_id = :target WHERE artist_id = :source", nativeQuery = true)
+        void moveToArtist(@Param("source") Long source, @Param("target") Long target);
+
         // 공연 수정 시 라인업 교체용
         @org.springframework.data.jpa.repository.Modifying
         @Query("DELETE FROM FestivalArtist fa WHERE fa.festival.id = :festivalId")

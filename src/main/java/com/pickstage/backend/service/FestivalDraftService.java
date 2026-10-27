@@ -376,6 +376,13 @@ public class FestivalDraftService {
             "^\\s*(\\d+\\s*차\\s*)?(라인\\s*업|line\\s*-?\\s*up|출연\\s*진|출연\\s*아티스트|아티스트)\\s*[:：\\-–]?\\s*",
             java.util.regex.Pattern.CASE_INSENSITIVE);
     private static final java.util.regex.Pattern LINEUP_SEPARATOR = java.util.regex.Pattern.compile("[,，、;；\\n\\r]+|\\s+/\\s+");
+    // 타임테이블의 날짜 제목 줄("12/18 (금)", "DAY 1", "2026.12.19 SAT")은 아티스트 이름이 아니다
+    private static final java.util.regex.Pattern LINEUP_DATE_HEADING = java.util.regex.Pattern.compile(
+            "^(day\\s*\\d+|((\\d{4})[-./])?\\d{1,2}[-./]\\d{1,2}\\s*([(\\[]\\s*[^)\\]]{1,5}\\s*[)\\]]|[a-z]{3,9}\\.?)?)$",
+            java.util.regex.Pattern.CASE_INSENSITIVE);
+    // "이름 (@인스타계정)" 꼬리표와 끝에 붙은 이모지(🆕 등)
+    private static final java.util.regex.Pattern LINEUP_ACCOUNT_TAG = java.util.regex.Pattern.compile("\\s*[(（]\\s*@[^)）]*[)）]");
+    private static final java.util.regex.Pattern LINEUP_TRAILING_SYMBOLS = java.util.regex.Pattern.compile("[\\s\\p{So}\\p{Cs}\\uFE0F]+$");
     private static final Set<String> LINEUP_FILLER = Set.of("등", "외", "tba", "tbd", "추후공개", "추후공지", "미정", "라인업");
 
     // 한 항목에 나열 문장이 통째로 들어온 경우를 아티스트 이름 단위로 나눈다.
@@ -391,9 +398,10 @@ public class FestivalDraftService {
         }
         List<String> names = new ArrayList<>();
         for (String part : parts) {
-            String name = part.replaceFirst("^[\\s•·\\-–*▶▷]+", "").trim();
+            String name = part.replaceFirst("^[\\s•·\\-–*▶▷]+", "");
+            name = LINEUP_TRAILING_SYMBOLS.matcher(LINEUP_ACCOUNT_TAG.matcher(name).replaceAll("")).replaceFirst("").trim();
             String filler = name.replaceAll("\\s+", "").toLowerCase();
-            if (!name.isEmpty() && !LINEUP_FILLER.contains(filler)) {
+            if (!name.isEmpty() && !LINEUP_FILLER.contains(filler) && !LINEUP_DATE_HEADING.matcher(name).matches()) {
                 names.add(name);
             }
         }
