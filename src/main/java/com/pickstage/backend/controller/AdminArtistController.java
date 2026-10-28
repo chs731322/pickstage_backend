@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.pickstage.backend.dto.AdminArtistMergeRequest;
 import com.pickstage.backend.dto.AdminArtistRequest;
 import com.pickstage.backend.dto.AdminArtistResponse;
+import com.pickstage.backend.dto.AdminArtistSplitRequest;
 import com.pickstage.backend.dto.PageResponse;
 import com.pickstage.backend.global.response.ApiResponse;
 import com.pickstage.backend.service.AdminArtistService;
@@ -69,6 +70,13 @@ public class AdminArtistController {
             @AuthenticationPrincipal Long userId, @PathVariable Long id,
             @RequestParam(required = false) String query) {
         return ResponseEntity.ok(ApiResponse.success(adminArtistService.findSpotifyCandidates(userId, id, query)));
+    }
+
+    // 합쳐져 등록된 아티스트("따미X신드럼") 나누기: 경로의 아티스트를 names의 개별 아티스트들로 나눈다
+    @PostMapping("/{id}/split")
+    public ResponseEntity<ApiResponse<List<AdminArtistResponse>>> split(
+            @AuthenticationPrincipal Long userId, @PathVariable Long id, @RequestBody AdminArtistSplitRequest request) {
+        return ResponseEntity.ok(ApiResponse.success(adminArtistService.split(userId, id, request), "아티스트를 나눴습니다."));
     }
 
     // 중복 아티스트 합치기: 경로의 아티스트를 targetId 아티스트로 합친다

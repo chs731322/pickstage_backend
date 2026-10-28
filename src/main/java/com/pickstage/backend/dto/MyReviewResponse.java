@@ -17,4 +17,5 @@ public class MyReviewResponse {
     private String standingTip;
     private String seatSection;
     private LocalDateTime createdAt;
+    private java.util.List<String> images;
 }

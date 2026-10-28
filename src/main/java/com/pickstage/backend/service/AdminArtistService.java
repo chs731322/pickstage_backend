@@ -1,6 +1,9 @@
 package com.pickstage.backend.service;
 
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
@@ -16,8 +19,11 @@ import org.springframework.transaction.annotation.Transactional;
 import com.pickstage.backend.dto.AdminArtistMergeRequest;
 import com.pickstage.backend.dto.AdminArtistRequest;
 import com.pickstage.backend.dto.AdminArtistResponse;
+import com.pickstage.backend.dto.AdminArtistSplitRequest;
 import com.pickstage.backend.dto.PageResponse;
 import com.pickstage.backend.entity.Artist;
+import com.pickstage.backend.entity.FestivalArtist;
+import com.pickstage.backend.entity.InterestArtist;
 import com.pickstage.backend.entity.User;
 import com.pickstage.backend.repository.ArtistRepository;
 import com.pickstage.backend.repository.FestivalArtistRepository;
@@ -37,18 +43,21 @@ public class AdminArtistService {
     private final FestivalArtistRepository festivalArtistRepository;
     private final InterestArtistRepository interestArtistRepository;
     private final SpotifyService spotifyService;
+    private final ArtistMatchService artistMatchService;
 
     public AdminArtistService(
             UserRepository userRepository,
             ArtistRepository artistRepository,
             FestivalArtistRepository festivalArtistRepository,
             InterestArtistRepository interestArtistRepository,
-            SpotifyService spotifyService) {
+            SpotifyService spotifyService,
+            ArtistMatchService artistMatchService) {
         this.userRepository = userRepository;
         this.artistRepository = artistRepository;
         this.festivalArtistRepository = festivalArtistRepository;
         this.interestArtistRepository = interestArtistRepository;
         this.spotifyService = spotifyService;
+        this.artistMatchService = artistMatchService;
     }
 
     // Spotify에서 이 아티스트의 후보를 찾는다 (사진은 관리자가 후보를 보고 직접 고른다). query가 없으면 아티스트 이름으로 찾는다.
@@ -187,6 +196,84 @@ public class AdminArtistService {
         return AdminArtistResponse.of(target,
                 festivalArtistRepository.countByArtistId(targetId),
                 interestCountOf(targetId));
+    }
+
+    // 분리하기: "따미X신드럼"처럼 여럿이 한 아티스트로 등록된 경우, 이름마다 아티스트(없으면 새로 만든다)를 찾아
+    // 원래 아티스트의 공연 출연과 관심 등록을 각각에 복사한 뒤 원래 아티스트는 지운다.
+    @Transactional
+    public List<AdminArtistResponse> split(Long requesterId, Long artistId, AdminArtistSplitRequest request) {
+        requireAdmin(requesterId);
+        Artist source = findArtist(artistId);
+
+        // 이름 정리: 공백 제거, 중복(정규화 기준) 제거
+        Map<String, String> uniqueNames = new LinkedHashMap<>();
+        for (String raw : request.getNames() == null ? List.<String>of() : request.getNames()) {
+            String name = raw == null ? "" : raw.trim();
+            if (name.isEmpty()) {
+                continue;
+            }
+            if (name.length() > MAX_NAME_LENGTH) {
+                throw new IllegalArgumentException("이름은 " + MAX_NAME_LENGTH + "자 이하로 입력해 주세요.");
+            }
+            uniqueNames.putIfAbsent(ArtistMatchService.normalize(name), name);
+        }
+        if (uniqueNames.size() < 2 || uniqueNames.size() > 6) {
+            throw new IllegalArgumentException("나눌 이름을 2~6개 입력해 주세요.");
+        }
+
+        List<Artist> parts = new ArrayList<>();
+        for (String name : uniqueNames.values()) {
+            Artist part = artistMatchService.findOrCreate(name);
+            if (part.getId().equals(artistId)) {
+                throw new IllegalArgumentException("'" + name + "'은(는) 나누려는 아티스트와 같은 이름이에요. 이름을 다시 확인해 주세요.");
+            }
+            if (parts.stream().noneMatch(p -> p.getId().equals(part.getId()))) {
+                parts.add(part);
+            }
+        }
+        if (parts.size() < 2) {
+            throw new IllegalArgumentException("서로 다른 아티스트 2명 이상으로 나눠야 해요.");
+        }
+
+        // 공연 출연: 각 아티스트가 아직 그 공연에 없으면 같은 날짜·순서로 추가한다
+        for (FestivalArtist link : festivalArtistRepository.findByArtistIdWithFestival(artistId)) {
+            for (Artist part : parts) {
+                if (!festivalArtistRepository.existsLink(link.getFestival().getId(), part.getId())) {
+                    festivalArtistRepository.save(FestivalArtist.builder()
+                            .festival(link.getFestival())
+                            .artist(part)
+                            .isHeadliner(link.isHeadliner())
+                            .performanceDate(link.getPerformanceDate())
+                            .billingOrder(link.getBillingOrder())
+                            .source("admin")
+                            .build());
+                }
+            }
+        }
+
+        // 관심 등록: 관심으로 담은 회원은 나뉜 아티스트 모두를 관심으로 갖게 한다
+        for (InterestArtist interest : interestArtistRepository.findByArtistId(artistId)) {
+            for (Artist part : parts) {
+                if (!interestArtistRepository.existsByUserIdAndArtistId(interest.getUserId(), part.getId())) {
+                    interestArtistRepository.save(InterestArtist.builder()
+                            .userId(interest.getUserId())
+                            .artistId(part.getId())
+                            .createdAt(LocalDateTime.now())
+                            .build());
+                }
+            }
+        }
+
+        festivalArtistRepository.deleteByArtistId(artistId);
+        interestArtistRepository.deleteByArtistId(artistId);
+        artistRepository.deleteAliasesByArtistId(artistId);
+        artistRepository.delete(source);
+
+        return parts.stream()
+                .map(part -> AdminArtistResponse.of(part,
+                        festivalArtistRepository.countByArtistId(part.getId()),
+                        interestCountOf(part.getId())))
+                .toList();
     }
 
     private long interestCountOf(Long artistId) {

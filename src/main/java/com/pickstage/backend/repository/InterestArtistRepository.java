@@ -28,6 +28,9 @@ public interface InterestArtistRepository extends JpaRepository<InterestArtist, 
     @Query("SELECT ia.artistId, COUNT(ia) FROM InterestArtist ia WHERE ia.artistId IN :artistIds GROUP BY ia.artistId")
     List<Object[]> countByArtistIds(@Param("artistIds") List<Long> artistIds);
 
+    // 분리하기: 이 아티스트를 관심 등록한 회원 목록
+    List<InterestArtist> findByArtistId(Long artistId);
+
     // 아티스트를 지울 때 관심 등록도 함께 지운다
     @org.springframework.data.jpa.repository.Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("DELETE FROM InterestArtist ia WHERE ia.artistId = :artistId")

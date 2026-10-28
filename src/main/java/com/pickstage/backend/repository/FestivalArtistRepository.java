@@ -21,6 +21,17 @@ public interface FestivalArtistRepository extends JpaRepository<FestivalArtist, 
         @Query("SELECT COUNT(fa) FROM FestivalArtist fa WHERE fa.artist.id = :artistId")
         long countByArtistId(@Param("artistId") Long artistId);
 
+        // 분리하기: 이 아티스트의 출연 목록(공연과 함께)과, 특정 공연에 이미 출연 중인지 확인
+        @Query("SELECT fa FROM FestivalArtist fa JOIN FETCH fa.festival WHERE fa.artist.id = :artistId")
+        List<FestivalArtist> findByArtistIdWithFestival(@Param("artistId") Long artistId);
+
+        @Query("SELECT COUNT(fa) > 0 FROM FestivalArtist fa WHERE fa.festival.id = :festivalId AND fa.artist.id = :artistId")
+        boolean existsLink(@Param("festivalId") Long festivalId, @Param("artistId") Long artistId);
+
+        @org.springframework.data.jpa.repository.Modifying(clearAutomatically = true, flushAutomatically = true)
+        @Query("DELETE FROM FestivalArtist fa WHERE fa.artist.id = :artistId")
+        void deleteByArtistId(@Param("artistId") Long artistId);
+
         // 합치기: 같은 공연에 이미 합칠 대상이 출연 중이면 이쪽 행은 지우고, 나머지는 대상으로 옮긴다
         @org.springframework.data.jpa.repository.Modifying(clearAutomatically = true, flushAutomatically = true)
         @Query(value = "DELETE FROM festival_artists WHERE artist_id = :source AND festival_id IN "

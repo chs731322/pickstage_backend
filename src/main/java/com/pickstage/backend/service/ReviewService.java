@@ -27,13 +27,33 @@ public class ReviewService {
         private final VenueRepository venueRepository;
         private final ReviewImageRepository reviewImageRepository;
         private final UserRepository userRepository;
+        private final UploadedImagePolicy uploadedImagePolicy;
+
+        private static final int IMAGES_MAX_COUNT = 5;
 
         public ReviewService(VenueReviewRepository venueReviewRepository, VenueRepository venueRepository,
-                        ReviewImageRepository reviewImageRepository, UserRepository userRepository) {
+                        ReviewImageRepository reviewImageRepository, UserRepository userRepository,
+                        UploadedImagePolicy uploadedImagePolicy) {
                 this.venueReviewRepository = venueReviewRepository;
                 this.venueRepository = venueRepository;
                 this.reviewImageRepository = reviewImageRepository;
                 this.userRepository = userRepository;
+                this.uploadedImagePolicy = uploadedImagePolicy;
+        }
+
+        // 후기 사진은 우리 저장소에 올린 이미지만, 최대 5장까지 허용한다
+        private void validateImages(java.util.List<String> images) {
+                if (images == null) {
+                        return;
+                }
+                if (images.size() > IMAGES_MAX_COUNT) {
+                        throw new IllegalArgumentException("사진은 최대 " + IMAGES_MAX_COUNT + "장까지 올릴 수 있습니다.");
+                }
+                for (String url : images) {
+                        if (!uploadedImagePolicy.isUploadedImageUrl(url)) {
+                                throw new IllegalArgumentException("업로드한 이미지만 사용할 수 있습니다.");
+                        }
+                }
         }
 
         // 내가 작성한 후기 목록 조회
@@ -66,6 +86,9 @@ public class ReviewService {
                                         .standingTip(review.getStandingTip())
                                         .seatSection(review.getSeatSection())
                                         .createdAt(review.getCreatedAt())
+                                        .images(reviewImageRepository.findByReviewIdOrderBySortOrderAsc(review.getId()).stream()
+                                                        .map(ReviewImage::getImageUrl)
+                                                        .toList())
                                         .build();
                 });
 
@@ -88,6 +111,7 @@ public class ReviewService {
                         throw new IllegalArgumentException(
                                         "올바르지 않은 요청입니다.");
                 }
+                validateImages(request.getImages());
 
                 VenueReview review = VenueReview.builder()
                                 .userId(userId)
@@ -153,6 +177,7 @@ public class ReviewService {
                                         request.getSeatSection());
                 }
 
+                validateImages(request.getImages());
                 if (request.getImages() != null) {
 
                         reviewImageRepository.deleteByReviewId(
