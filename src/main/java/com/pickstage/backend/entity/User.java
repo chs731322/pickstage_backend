@@ -65,13 +65,14 @@ public class User {
     // 회원 탈퇴
     // 개인 식별 정보를 지우고 계정을 비활성화한다.
     // email은 UNIQUE NOT NULL이라 id로 만든 값으로 바꾼다 (같은 이메일로 다시 가입할 수 있게 된다).
+    // socialId는 지우지 않는다 — 소셜 로그인은 socialId로 기존 회원을 찾기 때문에,
+    // 여기서 지워버리면 탈퇴한 계정을 다시 찾을 수 없어서 "탈퇴한 회원입니다" 차단이 무력화된다.
     public void withdraw() {
         LocalDateTime now = LocalDateTime.now();
         this.email = "withdrawn-" + this.id + "@deleted.invalid";
         this.nickname = "탈퇴한 회원";
         this.passwordHash = null;
         this.profileImage = null;
-        this.socialId = null;
         this.deletedAt = now;
         this.updatedAt = now;
     }
