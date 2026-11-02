@@ -17,6 +17,7 @@ import com.pickstage.backend.repository.UserRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -183,9 +184,11 @@ public class UserService {
         }
 
         // 회원 목록 조회
+        // sort: latest(최근 가입순, 기본) / oldest(오래된 가입순)
         @Transactional(readOnly = true)
         public PageResponse<AdminUserResponse> getUsers(
-                        Long requesterId, String keyword, String role, int page, int size) {
+                        Long requesterId, String keyword, String role, boolean withdrawnOnly, boolean excludeDummy,
+                        String sort, int page, int size) {
                 User requester = userRepository.findById(requesterId)
                                 .orElseThrow(() -> new IllegalStateException("사용자를 찾을 수 없습니다."));
 
@@ -193,8 +196,8 @@ public class UserService {
                         throw new org.springframework.security.access.AccessDeniedException("관리자 권한이 없습니다.");
                 }
 
-                Pageable pageable = PageRequest.of(page, size);
-                Page<User> users = userRepository.findByFilters(keyword, parseRole(role), pageable);
+                Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100), userListSort(sort));
+                Page<User> users = userRepository.findByFilters(keyword, parseRole(role), withdrawnOnly, excludeDummy, pageable);
 
                 Page<AdminUserResponse> content = users.map(user -> AdminUserResponse.builder()
                                 .id(user.getId())
@@ -207,6 +210,13 @@ public class UserService {
                                 .build());
 
                 return PageResponse.of(content);
+        }
+
+        static Sort userListSort(String sort) {
+                if ("oldest".equals(sort)) {
+                        return Sort.by(Sort.Direction.ASC, "createdAt");
+                }
+                return Sort.by(Sort.Direction.DESC, "createdAt");
         }
 
         private User.Role parseRole(String role) {

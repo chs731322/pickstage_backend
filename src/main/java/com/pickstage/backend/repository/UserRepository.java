@@ -25,12 +25,17 @@ public interface UserRepository extends JpaRepository<User, Long> {
     boolean existsByNickname(String nickname);
 
     // 회원 목록 조회
+    // withdrawnOnly: 탈퇴한 회원만 보기 / excludeDummy: 더미데이터(dummy-%@pickstage.local) 제외
     @Query("SELECT u FROM User u WHERE " +
                         "(:role IS NULL OR u.role = :role) AND " +
-                        "(:keyword IS NULL OR u.email LIKE %:keyword% OR u.nickname LIKE %:keyword%)")
+                        "(:keyword IS NULL OR u.email LIKE %:keyword% OR u.nickname LIKE %:keyword%) AND " +
+                        "(:withdrawnOnly = false OR u.deletedAt IS NOT NULL) AND " +
+                        "(:excludeDummy = false OR u.email NOT LIKE 'dummy-%@pickstage.local')")
         Page<User> findByFilters(
                         @Param("keyword") String keyword,
                         @Param("role") User.Role role,
+                        @Param("withdrawnOnly") boolean withdrawnOnly,
+                        @Param("excludeDummy") boolean excludeDummy,
                         Pageable pageable);
 
     // 소셜 로그인 사용자 찾기

@@ -144,9 +144,13 @@ public class AdminController {
             @AuthenticationPrincipal Long userId,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String role,
+            @RequestParam(defaultValue = "false") boolean withdrawnOnly,
+            @RequestParam(defaultValue = "false") boolean excludeDummy,
+            @RequestParam(required = false) String sort,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        PageResponse<AdminUserResponse> response = userService.getUsers(userId, keyword, role, page, size);
+        PageResponse<AdminUserResponse> response =
+                userService.getUsers(userId, keyword, role, withdrawnOnly, excludeDummy, sort, page, size);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
