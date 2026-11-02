@@ -14,6 +14,7 @@ public class FAQDetailResponse {
     private Long id;
     private String question;
     private String answer;
+    private String category;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

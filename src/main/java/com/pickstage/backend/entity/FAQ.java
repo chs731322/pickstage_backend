@@ -27,6 +27,7 @@ public class FAQ {
     private Long id;
     private String question;
     private String answer;
+    private String category;
 
     @Column(name = "sort_order")
     private int sortOrder;

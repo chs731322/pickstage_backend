@@ -8,4 +8,5 @@ import lombok.NoArgsConstructor;
 public class AdminFAQRequest {
     private String question;
     private String answer;
+    private String category;
 }

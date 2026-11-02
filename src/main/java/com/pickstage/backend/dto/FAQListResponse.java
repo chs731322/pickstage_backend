@@ -13,6 +13,7 @@ import java.time.LocalDateTime;
 public class FAQListResponse {
     private Long id;
     private String question;
+    private String category;
     private int sortOrder;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

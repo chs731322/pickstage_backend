@@ -40,6 +40,7 @@ public class FAQService {
                 .map(faq -> FAQListResponse.builder()
                         .id(faq.getId())
                         .question(faq.getQuestion())
+                        .category(faq.getCategory())
                         .sortOrder(faq.getSortOrder())
                         .createdAt(faq.getCreatedAt())
                         .updatedAt(faq.getUpdatedAt())
@@ -58,6 +59,7 @@ public class FAQService {
                 .id(faq.getId())
                 .question(faq.getQuestion())
                 .answer(faq.getAnswer())
+                .category(faq.getCategory())
                 .createdAt(faq.getCreatedAt())
                 .updatedAt(faq.getUpdatedAt())
                 .build();
@@ -72,6 +74,7 @@ public class FAQService {
         FAQ faq = FAQ.builder()
                 .question(request.getQuestion())
                 .answer(request.getAnswer())
+                .category(request.getCategory())
                 .sortOrder(0)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
@@ -94,6 +97,9 @@ public class FAQService {
         }
         if (request.getAnswer() != null) {
             faq.setAnswer(request.getAnswer());
+        }
+        if (request.getCategory() != null) {
+            faq.setCategory(request.getCategory());
         }
         faq.setUpdatedAt(LocalDateTime.now());
 
