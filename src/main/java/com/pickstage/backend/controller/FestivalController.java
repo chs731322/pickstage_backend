@@ -35,9 +35,11 @@ public class FestivalController {
             @RequestParam(required = false) String keyword, @RequestParam(defaultValue = "latest") String sort,
             @RequestParam(defaultValue = "false") boolean upcomingOnly,
             @RequestParam(defaultValue = "false") boolean outdoor,
+            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate dateFrom,
+            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate dateTo,
             @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size) {
 
-        Page<FestivalListResponse> result = festivalService.getFestivals(region, genre, keyword, sort, upcomingOnly, outdoor, page, size);
+        Page<FestivalListResponse> result = festivalService.getFestivals(region, genre, keyword, sort, upcomingOnly, outdoor, dateFrom, dateTo, page, size);
 
         return ResponseEntity.ok(ApiResponse.success(PageResponse.of(result)));
     }

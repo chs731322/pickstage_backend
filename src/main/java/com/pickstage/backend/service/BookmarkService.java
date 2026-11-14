@@ -68,6 +68,9 @@ public class BookmarkService {
 
         // 북마크 수 감소
         festivalService.decrementBookmarkCount(festivalId);
+
+        // 아직 발송 전인 티켓 오픈 알림도 지운다
+        notificationService.cancelTicketOpenNotification(userId, festivalId);
     }
 
     // 회원 탈퇴: 사용자의 북마크를 모두 지우고 각 공연의 북마크 수를 줄인다

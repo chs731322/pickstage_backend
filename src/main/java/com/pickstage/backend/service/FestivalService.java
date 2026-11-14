@@ -86,13 +86,19 @@ public class FestivalService {
         // sort: latest(기본) / popular(끝난 공연은 뒤로) / start(시작 임박순) / ticket_open(앞으로 열릴 티켓, 임박순) / ticket_open_recent(이미 열린 티켓, 최근순)
         // upcomingOnly: true면 이미 끝난 공연(종료일이 오늘 이전)은 제외 (메인 배너, 티켓 오픈 일정용)
         // outdoor: true면 장소 이름에 공원·해변·광장 등이 들어간 야외 공연만
+        // keyword: 공연명 또는 라인업 아티스트(한글·영문 이름)에 포함된 글자
+        // dateFrom / dateTo: 이 기간과 공연 기간이 하루라도 겹치는 공연 (한쪽만 줘도 된다)
         @Transactional(readOnly = true)
         public Page<FestivalListResponse> getFestivals(
                         String region, String genre, String keyword,
-                        String sort, boolean upcomingOnly, boolean outdoor, int page, int size) {
+                        String sort, boolean upcomingOnly, boolean outdoor,
+                        java.time.LocalDate dateFrom, java.time.LocalDate dateTo, int page, int size) {
 
                 if (page < 0 || size <= 0) {
                         throw new IllegalArgumentException("올바르지 않은 요청입니다.");
+                }
+                if (dateFrom != null && dateTo != null && dateFrom.isAfter(dateTo)) {
+                        throw new IllegalArgumentException("시작일이 종료일보다 늦을 수 없어요.");
                 }
 
                 String sortKey = sort != null ? sort : "latest";
@@ -134,7 +140,7 @@ public class FestivalService {
                 boolean useGenres = !genreList.isEmpty();
 
                 Page<Festival> festivals = festivalRepository.findByFilters(region, useGenres, useGenres ? genreList : java.util.List.of(""),
-                                keyword, openAfter, openBefore, endAfter, outdoor, pageable);
+                                keyword, openAfter, openBefore, endAfter, dateFrom, dateTo, outdoor, pageable);
 
                 Map<Long, String> firstTicketLabels = sortKey.startsWith("ticket_open")
                                 ? firstTicketLabels(festivals.getContent())
