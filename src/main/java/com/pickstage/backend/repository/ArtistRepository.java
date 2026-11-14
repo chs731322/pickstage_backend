@@ -34,6 +34,16 @@ public interface ArtistRepository extends JpaRepository<Artist, Long> {
             @Param("noPhotoOnly") boolean noPhotoOnly, @Param("noSpotifyOnly") boolean noSpotifyOnly,
             Pageable pageable);
 
+    // 공연 검색창의 아티스트 후보: 이름·영문명에 keyword(소문자)가 들어가고, 출연 공연이 하나라도 있는 아티스트.
+    // 각 행은 [id, 이름, 영문명, 프로필 사진, 아직 끝나지 않은 출연 공연 수]
+    @Query("SELECT a.id, a.name, a.englishName, a.profileImageUrl, "
+            + "(SELECT COUNT(fa) FROM FestivalArtist fa WHERE fa.artist = a AND fa.festival.endDate >= :today) "
+            + "FROM Artist a WHERE "
+            + "(LOWER(a.name) LIKE CONCAT('%', :keyword, '%') OR LOWER(a.englishName) LIKE CONCAT('%', :keyword, '%')) "
+            + "AND EXISTS (SELECT 1 FROM FestivalArtist fa2 WHERE fa2.artist = a)")
+    List<Object[]> searchLinkedByKeyword(@Param("keyword") String keyword, @Param("today") java.time.LocalDate today,
+            Pageable pageable);
+
     // 별칭 정리 (삭제·합치기용)
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query(value = "DELETE FROM artist_aliases WHERE artist_id = :artistId", nativeQuery = true)

@@ -1,6 +1,7 @@
 package com.pickstage.backend.service;
 
 import com.pickstage.backend.dto.ArtistDetailResponse;
+import com.pickstage.backend.dto.ArtistSearchResponse;
 import com.pickstage.backend.dto.UpcomingConcertInfo;
 import com.pickstage.backend.entity.Artist;
 import com.pickstage.backend.entity.FestivalArtist;
@@ -29,6 +30,42 @@ public class ArtistService {
     }
 
     // 아티스트 상세 조회
+    // 공연 검색창에 보여줄 아티스트 후보. 이름이 똑같은 아티스트 -> 예정 공연이 많은 순 -> 이름순
+    static final int SEARCH_MAX_SIZE = 10;
+    // 한 글자 검색(예: "향")도 허용하되, 너무 많이 가져오지 않게 후보 수를 제한한다
+    static final int SEARCH_CANDIDATE_LIMIT = 300;
+
+    public List<ArtistSearchResponse> searchArtists(String keyword, int size) {
+        String normalized = keyword == null ? "" : keyword.trim().toLowerCase();
+        if (normalized.isEmpty()) {
+            return List.of();
+        }
+        int limit = Math.min(Math.max(size, 1), SEARCH_MAX_SIZE);
+
+        List<Object[]> rows = artistRepository.searchLinkedByKeyword(
+                normalized, LocalDate.now(), org.springframework.data.domain.PageRequest.of(0, SEARCH_CANDIDATE_LIMIT));
+
+        return rows.stream()
+                .map(row -> ArtistSearchResponse.builder()
+                        .id((Long) row[0])
+                        .name((String) row[1])
+                        .englishName((String) row[2])
+                        .profileImage((String) row[3])
+                        .upcomingCount(((Number) row[4]).intValue())
+                        .build())
+                .sorted(java.util.Comparator
+                        .comparing((ArtistSearchResponse a) -> !isExactName(a, normalized))
+                        .thenComparing(java.util.Comparator.comparingInt(ArtistSearchResponse::getUpcomingCount).reversed())
+                        .thenComparing(a -> a.getName() == null ? "" : a.getName()))
+                .limit(limit)
+                .toList();
+    }
+
+    private static boolean isExactName(ArtistSearchResponse artist, String normalizedKeyword) {
+        return normalizedKeyword.equals(artist.getName() == null ? null : artist.getName().toLowerCase())
+                || normalizedKeyword.equals(artist.getEnglishName() == null ? null : artist.getEnglishName().toLowerCase());
+    }
+
     // 검색 엔진 사이트맵에 넣을 아티스트 id 목록 (공개 정보)
     public List<Long> getArtistIdsForSitemap() {
         return festivalArtistRepository.findLinkedArtistIds();

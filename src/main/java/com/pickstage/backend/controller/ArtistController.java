@@ -1,6 +1,7 @@
 package com.pickstage.backend.controller;
 
 import com.pickstage.backend.dto.ArtistDetailResponse;
+import com.pickstage.backend.dto.ArtistSearchResponse;
 import com.pickstage.backend.dto.InterestArtistResponse;
 import com.pickstage.backend.global.response.ApiResponse;
 import com.pickstage.backend.service.ArtistService;
@@ -36,6 +37,14 @@ public class ArtistController {
         return ResponseEntity.ok(
                 ApiResponse.success(result)
         );
+    }
+
+    // 공연 검색창에 보여줄 아티스트 후보 (로그인 없이 조회, 출연 공연이 있는 아티스트만)
+    @GetMapping
+    public ResponseEntity<ApiResponse<List<ArtistSearchResponse>>> searchArtists(
+            @RequestParam String keyword,
+            @RequestParam(defaultValue = "5") int size) {
+        return ResponseEntity.ok(ApiResponse.success(artistService.searchArtists(keyword, size)));
     }
 
     // 사이트맵용 아티스트 id 목록 (로그인 없이 조회, 출연 공연이 있는 아티스트만)
