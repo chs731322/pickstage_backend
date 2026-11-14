@@ -400,8 +400,10 @@ public class FestivalDraftService {
         for (String part : parts) {
             String name = part.replaceFirst("^[\\s•·\\-–*▶▷]+", "");
             name = LINEUP_TRAILING_SYMBOLS.matcher(LINEUP_ACCOUNT_TAG.matcher(name).replaceAll("")).replaceFirst("").trim();
-            String filler = name.replaceAll("\\s+", "").toLowerCase();
-            if (!name.isEmpty() && !LINEUP_FILLER.contains(filler) && !LINEUP_DATE_HEADING.matcher(name).matches()) {
+            // 포스터의 장식 문자(𝟭𝟮.𝟯𝟭 𝙏𝙃𝙐 등)도 날짜·안내 문구로 걸러지도록, 검사만 호환 정규화(NFKC) 문자열로 한다
+            String compat = java.text.Normalizer.normalize(name, java.text.Normalizer.Form.NFKC).trim();
+            String filler = compat.replaceAll("\\s+", "").toLowerCase();
+            if (!name.isEmpty() && !LINEUP_FILLER.contains(filler) && !LINEUP_DATE_HEADING.matcher(compat).matches()) {
                 names.add(name);
             }
         }

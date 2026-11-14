@@ -55,6 +55,14 @@ class FestivalDraftLineupTest {
     }
 
     @Test
+    void 장식_문자로_쓴_날짜_줄과_안내_문구도_걸러낸다() {
+        assertTrue(FestivalDraftService.splitLineupName("𝟭𝟮.𝟯𝟭 𝙏𝙃𝙐").isEmpty());
+        assertTrue(FestivalDraftService.splitLineupName("𝗧𝗕𝗔").isEmpty());
+        assertEquals(List.of("실리카겔", "혁오"), FestivalDraftService.splitLineupName("𝟭𝟮.𝟯𝟭 𝙏𝙃𝙐\n실리카겔\n혁오"));
+        assertEquals(List.of("𝗔𝗫𝗠𝗫𝗣"), FestivalDraftService.splitLineupName("𝗔𝗫𝗠𝗫𝗣"));
+    }
+
+    @Test
     void 인스타_계정과_끝_이모지는_이름에서_뗀다() {
         assertEquals(List.of("아시안체어샷"), FestivalDraftService.splitLineupName("아시안체어샷 (@asianchairshot) \uD83C\uDD95"));
         assertEquals(List.of("이오욱(LOW)"), FestivalDraftService.splitLineupName("이오욱(LOW)"));
