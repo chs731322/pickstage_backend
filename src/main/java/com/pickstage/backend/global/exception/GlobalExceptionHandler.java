@@ -136,6 +136,14 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.fail(e.getMessage()));
     }
 
+    // 이미 신고했거나 이미 차단한 대상에 같은 요청을 다시 보낸 경우 (이유를 그대로 알려준다)
+    @ExceptionHandler(DuplicateRequestException.class)
+    public ResponseEntity<ApiResponse<Void>> handleDuplicateRequest(DuplicateRequestException e) {
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(ApiResponse.fail(e.getMessage()));
+    }
+
     // 이미 존재하는 리소스를 중복 생성하려는 경우 (북마크, 관심 아티스트 등)
     @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
     public ResponseEntity<ApiResponse<Void>> handleDataIntegrityViolation(

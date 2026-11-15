@@ -24,4 +24,13 @@ class GlobalExceptionHandlerTest {
         assertFalse(message.contains("festivals"));
         assertFalse(message.contains("title"));
     }
+
+    @Test
+    void 중복_요청은_이유를_그대로_알려준다() {
+        ResponseEntity<ApiResponse<Void>> response = new GlobalExceptionHandler()
+                .handleDuplicateRequest(new DuplicateRequestException("이미 신고한 대상입니다."));
+
+        assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
+        assertEquals("이미 신고한 대상입니다.", response.getBody().getMessage());
+    }
 }
