@@ -14,4 +14,6 @@ public class VenueImageInfo {
     // imagetype enum('exterior','interior','view','standing')
     private String imageType;
     private int sortOrder;
+    // 사진 출처 표기 (없으면 null)
+    private String credit;
 }

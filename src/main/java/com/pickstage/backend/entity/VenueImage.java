@@ -26,5 +26,7 @@ public class VenueImage {
     private String imageType;
     private int sortOrder;
     private LocalDateTime createdAt;
+    // 사진 출처 표기 (작성자 · 라이선스). CC BY 같은 라이선스 사진에는 화면에 꼭 보여줘야 한다
+    private String credit;
     
 }

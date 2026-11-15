@@ -93,6 +93,7 @@ public class VenueService {
                         .imageUrl(image.getImageUrl())
                         .imageType(image.getImageType())
                         .sortOrder(image.getSortOrder())
+                        .credit(image.getCredit())
                         .build())
                 .toList();
         var upcomingConcerts = festivalRepository.findByVenueIdAndStartDateGreaterThanEqual(id, java.time.LocalDate.now()).stream()
