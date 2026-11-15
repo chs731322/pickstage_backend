@@ -29,7 +29,7 @@ public class VenueService {
      * VenueImageInfo로 변환
      * 3. festivalRepository.findByVenueIdAndStartDateGreaterThanEqual(id,
      * LocalDate.now()) → 작은 DTO로 변환
-     * 4. venueReviewRepository.findByVenueIdAndDeletedAtIsNull(id) →
+     * 4. venueReviewRepository.findByVenueIdAndDeletedAtIsNullAndHiddenAtIsNull(id) →
      * VenueReviewInfo로 변환 (userRepository로 닉네임 조회)
      * 5. 넷 다 합쳐서 VenueDetailResponse 빌드
      */
@@ -40,10 +40,13 @@ public class VenueService {
     private final VenueReviewRepository venueReviewRepository;
     private final UserRepository userRepository;
     private final ReviewImageRepository reviewImageRepository;
+    private final BlockService blockService;
 
     public VenueService(VenueRepository venueRepository, VenueImageRepository venueImageRepository,
             FestivalRepository festivalRepository, VenueReviewRepository venueReviewRepository,
-            UserRepository userRepository, ReviewImageRepository reviewImageRepository) {
+            UserRepository userRepository, ReviewImageRepository reviewImageRepository,
+            BlockService blockService) {
+        this.blockService = blockService;
         this.venueRepository = venueRepository;
         this.venueImageRepository = venueImageRepository;
         this.festivalRepository = festivalRepository;
@@ -83,8 +86,8 @@ public class VenueService {
         return PageResponse.of(content);
     }
 
-    // 공연장 상세 조회
-    public VenueDetailResponse getVenueDetail(Long id) {
+    // 공연장 상세 조회 (로그인했다면, 내가 차단한 사용자의 후기는 뺀다)
+    public VenueDetailResponse getVenueDetail(Long id, Long viewerId) {
         var venue = venueRepository.findById(id)
                 .orElseThrow(() -> new IllegalStateException("존재하지 않는 공연장입니다."));
         var images = venueImageRepository.findByVenueIdOrderBySortOrderAsc(id).stream()
@@ -103,7 +106,9 @@ public class VenueService {
                         .startDate(festival.getStartDate())
                         .build())
                 .toList();
-        var reviews = venueReviewRepository.findByVenueIdAndDeletedAtIsNull(id).stream()
+        var blocked = blockService.getBlockedIds(viewerId);
+        var reviews = venueReviewRepository.findByVenueIdAndDeletedAtIsNullAndHiddenAtIsNull(id).stream()
+                .filter(review -> !blocked.contains(review.getUserId()))
                 .map(review -> VenueReviewInfo.builder()
                         .id(review.getId())
                         .nickname(userRepository.findById(review.getUserId())

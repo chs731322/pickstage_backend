@@ -28,12 +28,14 @@ public class ReviewService {
         private final ReviewImageRepository reviewImageRepository;
         private final UserRepository userRepository;
         private final UploadedImagePolicy uploadedImagePolicy;
+        private final ProfanityFilter profanityFilter;
 
         private static final int IMAGES_MAX_COUNT = 5;
 
         public ReviewService(VenueReviewRepository venueReviewRepository, VenueRepository venueRepository,
                         ReviewImageRepository reviewImageRepository, UserRepository userRepository,
-                        UploadedImagePolicy uploadedImagePolicy) {
+                        UploadedImagePolicy uploadedImagePolicy, ProfanityFilter profanityFilter) {
+                this.profanityFilter = profanityFilter;
                 this.venueReviewRepository = venueReviewRepository;
                 this.venueRepository = venueRepository;
                 this.reviewImageRepository = reviewImageRepository;
@@ -66,7 +68,7 @@ public class ReviewService {
                 Pageable pageable = PageRequest.of(page, size);
 
                 Page<VenueReview> reviews = venueReviewRepository
-                                .findByUserIdAndDeletedAtIsNullOrderByCreatedAtDesc(
+                                .findByUserIdAndDeletedAtIsNullAndHiddenAtIsNullOrderByCreatedAtDesc(
                                                 userId,
                                                 pageable);
 
@@ -112,6 +114,8 @@ public class ReviewService {
                                         "올바르지 않은 요청입니다.");
                 }
                 validateImages(request.getImages());
+                profanityFilter.assertClean(request.getContent(), request.getViewInfo(),
+                                request.getStandingTip(), request.getSeatSection());
 
                 VenueReview review = VenueReview.builder()
                                 .userId(userId)
@@ -154,6 +158,9 @@ public class ReviewService {
                         throw new AccessDeniedException(
                                         "수정 권한이 없습니다.");
                 }
+
+                profanityFilter.assertClean(request.getContent(), request.getViewInfo(),
+                                request.getStandingTip(), request.getSeatSection());
 
                 if (request.getRating() != null) {
                         review.setRating(request.getRating());

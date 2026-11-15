@@ -12,10 +12,10 @@ import com.pickstage.backend.entity.VenueReview;
 @Repository
 public interface VenueReviewRepository extends JpaRepository<VenueReview, Long> {
 
-    List<VenueReview> findByVenueIdAndDeletedAtIsNull(Long venueId);
+    List<VenueReview> findByVenueIdAndDeletedAtIsNullAndHiddenAtIsNull(Long venueId);
 
     // 내가 작성한 후기 목록 조회
-    Page<VenueReview> findByUserIdAndDeletedAtIsNullOrderByCreatedAtDesc(
+    Page<VenueReview> findByUserIdAndDeletedAtIsNullAndHiddenAtIsNullOrderByCreatedAtDesc(
             Long userId,
             Pageable pageable
     );

@@ -17,4 +17,6 @@ public class Comment {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private LocalDateTime deletedAt;
+    // 신고가 쌓여 임시로 숨긴 시각
+    private LocalDateTime hiddenAt;
 }

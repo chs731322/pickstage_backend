@@ -1,6 +1,8 @@
 package com.pickstage.backend.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -133,5 +135,76 @@ class ReportServiceTest {
         assertThrows(DuplicateRequestException.class,
                 () -> service.createReport(1L, request(Report.TargetType.POST, 10L, Report.Reason.SPAM, null)));
         verify(reportRepository, never()).save(any());
+    }
+
+    // ---- 신고가 쌓이면 임시로 숨김 ----
+
+    @Test
+    void 처리_전_신고가_3건_쌓이면_게시글을_숨긴다() {
+        Post post = Post.builder().id(10L).userId(2L).build();
+        when(postRepository.findById(10L)).thenReturn(Optional.of(post));
+        when(reportRepository.countByTargetTypeAndTargetIdAndStatus(Report.TargetType.POST, 10L, Report.Status.PENDING))
+                .thenReturn(3L);
+
+        service.createReport(1L, request(Report.TargetType.POST, 10L, Report.Reason.ABUSE, null));
+
+        assertNotNull(post.getHiddenAt());
+        verify(postRepository).save(post);
+    }
+
+    @Test
+    void 신고가_3건_미만이면_숨기지_않는다() {
+        Post post = Post.builder().id(10L).userId(2L).build();
+        when(postRepository.findById(10L)).thenReturn(Optional.of(post));
+        when(reportRepository.countByTargetTypeAndTargetIdAndStatus(Report.TargetType.POST, 10L, Report.Status.PENDING))
+                .thenReturn(2L);
+
+        service.createReport(1L, request(Report.TargetType.POST, 10L, Report.Reason.ABUSE, null));
+
+        assertNull(post.getHiddenAt());
+        verify(postRepository, never()).save(any());
+    }
+
+    @Test
+    void 댓글과_후기도_3건이면_숨긴다() {
+        Comment comment = Comment.builder().id(5L).userId(2L).build();
+        VenueReview review = VenueReview.builder().id(6L).userId(2L).build();
+        when(commentRepository.findById(5L)).thenReturn(Optional.of(comment));
+        when(venueReviewRepository.findById(6L)).thenReturn(Optional.of(review));
+        when(reportRepository.countByTargetTypeAndTargetIdAndStatus(Report.TargetType.COMMENT, 5L, Report.Status.PENDING))
+                .thenReturn(3L);
+        when(reportRepository.countByTargetTypeAndTargetIdAndStatus(Report.TargetType.VENUE_REVIEW, 6L, Report.Status.PENDING))
+                .thenReturn(4L);
+
+        service.createReport(1L, request(Report.TargetType.COMMENT, 5L, Report.Reason.SPAM, null));
+        service.createReport(1L, request(Report.TargetType.VENUE_REVIEW, 6L, Report.Reason.SPAM, null));
+
+        assertNotNull(comment.getHiddenAt());
+        assertNotNull(review.getHiddenAt());
+    }
+
+    @Test
+    void 이미_숨긴_글은_숨긴_시각을_바꾸지_않는다() {
+        LocalDateTime hiddenAt = LocalDateTime.now().minusDays(1);
+        Post post = Post.builder().id(10L).userId(2L).hiddenAt(hiddenAt).build();
+        when(postRepository.findById(10L)).thenReturn(Optional.of(post));
+        when(reportRepository.countByTargetTypeAndTargetIdAndStatus(Report.TargetType.POST, 10L, Report.Status.PENDING))
+                .thenReturn(5L);
+
+        service.createReport(1L, request(Report.TargetType.POST, 10L, Report.Reason.SPAM, null));
+
+        assertEquals(hiddenAt, post.getHiddenAt());
+        verify(postRepository, never()).save(any());
+    }
+
+    @Test
+    void 사용자_신고는_쌓여도_자동으로_숨기지_않는다() {
+        when(userRepository.findById(2L)).thenReturn(Optional.of(User.builder().id(2L).build()));
+        when(reportRepository.countByTargetTypeAndTargetIdAndStatus(Report.TargetType.USER, 2L, Report.Status.PENDING))
+                .thenReturn(10L);
+
+        service.createReport(1L, request(Report.TargetType.USER, 2L, Report.Reason.ABUSE, null));
+
+        verify(reportRepository, never()).countByTargetTypeAndTargetIdAndStatus(any(), any(), any());
     }
 }

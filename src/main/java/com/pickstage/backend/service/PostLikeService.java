@@ -28,7 +28,7 @@ public class PostLikeService {
     @Transactional
     public void addLike(Long userId, Long postId) {
         Post post = postRepository.findById(postId)
-                .filter(p -> p.getDeletedAt() == null)
+                .filter(p -> p.getDeletedAt() == null && p.getHiddenAt() == null)
                 .orElseThrow(() -> new IllegalStateException("존재하지 않는 게시글입니다."));
 
         if (postLikeRepository.existsByPostIdAndUserId(post.getId(), userId)) {

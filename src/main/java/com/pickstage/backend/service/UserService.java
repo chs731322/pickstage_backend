@@ -35,6 +35,7 @@ public class UserService {
         private final NotificationRepository notificationRepository;
         private final BookmarkService bookmarkService;
         private final UploadedImagePolicy uploadedImagePolicy;
+        private final ProfanityFilter profanityFilter;
 
         public UserService(
                         UserRepository userRepository,
@@ -46,8 +47,10 @@ public class UserService {
                         ChecklistRepository checklistRepository,
                         NotificationRepository notificationRepository,
                         BookmarkService bookmarkService,
-                        UploadedImagePolicy uploadedImagePolicy) {
+                        UploadedImagePolicy uploadedImagePolicy,
+                        ProfanityFilter profanityFilter) {
 
+                this.profanityFilter = profanityFilter;
                 this.userRepository = userRepository;
                 this.refreshTokenRepository = refreshTokenRepository;
                 this.passwordEncoder = passwordEncoder;
@@ -87,6 +90,8 @@ public class UserService {
                 User user = userRepository.findById(userId)
                                 .orElseThrow(() -> new IllegalStateException(
                                                 "사용자를 찾을 수 없습니다."));
+
+                profanityFilter.assertClean(request.getNickname());
 
                 // 닉네임이 전달된 경우에만 중복 확인 하게끔
                 if (request.getNickname() != null

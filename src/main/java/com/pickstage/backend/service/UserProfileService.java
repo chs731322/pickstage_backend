@@ -35,6 +35,7 @@ public class UserProfileService {
     private final InterestArtistService interestArtistService;
     private final PostService postService;
     private final ReviewService reviewService;
+    private final BlockService blockService;
 
     public UserProfileService(
             UserRepository userRepository,
@@ -42,7 +43,9 @@ public class UserProfileService {
             BookmarkService bookmarkService,
             InterestArtistService interestArtistService,
             PostService postService,
-            ReviewService reviewService) {
+            ReviewService reviewService,
+            BlockService blockService) {
+        this.blockService = blockService;
         this.userRepository = userRepository;
         this.userPrivacyRepository = userPrivacyRepository;
         this.bookmarkService = bookmarkService;
@@ -54,6 +57,7 @@ public class UserProfileService {
     @Transactional(readOnly = true)
     public UserProfileResponse getProfile(Long viewerId, Long targetId) {
         User user = findActiveUser(targetId);
+        requireNotBlocked(viewerId, targetId);
         boolean self = viewerId.equals(targetId);
         return UserProfileResponse.builder()
                 .id(user.getId())
@@ -114,8 +118,16 @@ public class UserProfileService {
                 .orElseThrow(() -> new IllegalStateException("존재하지 않는 회원입니다."));
     }
 
+    // 내가 차단한 사용자의 프로필은 볼 수 없다 (차단 목록에서 해제하면 다시 볼 수 있다)
+    private void requireNotBlocked(Long viewerId, Long targetId) {
+        if (!viewerId.equals(targetId) && blockService.isBlocked(viewerId, targetId)) {
+            throw new IllegalStateException("차단한 사용자의 프로필입니다.");
+        }
+    }
+
     private void requireVisible(Long viewerId, Long targetId, java.util.function.Predicate<UserPrivacy> visible) {
         findActiveUser(targetId);
+        requireNotBlocked(viewerId, targetId);
         if (viewerId.equals(targetId)) {
             return;
         }

@@ -36,6 +36,7 @@ public class AuthService {
     private final KakaoService kakaoService;
     private final NaverService naverService;
     private final GoogleService googleService;
+    private final ProfanityFilter profanityFilter;
 
     public AuthService(UserRepository userRepository,
                        RefreshTokenRepository refreshTokenRepository,
@@ -45,8 +46,10 @@ public class AuthService {
                        EmailService emailService,
                        KakaoService kakaoService,
                        NaverService naverService,
-                       GoogleService googleService) {
+                       GoogleService googleService,
+                       ProfanityFilter profanityFilter) {
 
+        this.profanityFilter = profanityFilter;
         this.userRepository = userRepository;
         this.refreshTokenRepository = refreshTokenRepository;
         this.passwordResetTokenRepository = passwordResetTokenRepository;
@@ -73,6 +76,8 @@ public class AuthService {
     // 회원가입
     @Transactional
     public AuthResponse signup(SignupRequest request) {
+
+        profanityFilter.assertClean(request.getNickname());
 
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new IllegalArgumentException("이미 가입된 이메일입니다.");

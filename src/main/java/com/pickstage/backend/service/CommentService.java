@@ -19,9 +19,14 @@ public class CommentService {
     private final PostRepository postRepository;
     private final UserRepository userRepository;
     private final NotificationService notificationService;
+    private final BlockService blockService;
+    private final ProfanityFilter profanityFilter;
 
     public CommentService(CommentRepository commentRepository, PostRepository postRepository,
-            UserRepository userRepository, NotificationService notificationService) {
+            UserRepository userRepository, NotificationService notificationService,
+            BlockService blockService, ProfanityFilter profanityFilter) {
+        this.blockService = blockService;
+        this.profanityFilter = profanityFilter;
         this.userRepository = userRepository;
         this.notificationService = notificationService;
         this.commentRepository = commentRepository;
@@ -34,14 +39,15 @@ public class CommentService {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new IllegalStateException("존재하지 않는 게시글입니다."));
 
-        if (post.getDeletedAt() != null) {
+        if (post.getDeletedAt() != null || post.getHiddenAt() != null) {
             throw new IllegalStateException("존재하지 않는 게시글입니다.");
         }
+        profanityFilter.assertClean(content);
 
         if (parentId != null) {
             Comment parent = commentRepository.findById(parentId)
                     .orElseThrow(() -> new IllegalStateException("존재하지 않는 댓글입니다."));
-            if (parent.getDeletedAt() != null) {
+            if (parent.getDeletedAt() != null || parent.getHiddenAt() != null) {
                 throw new IllegalStateException("존재하지 않는 댓글입니다.");
             }
             if (parent.getParentId() != null) {
@@ -59,7 +65,10 @@ public class CommentService {
 
         commentRepository.save(comment);
 
-        // 내 글에 다른 사람이 댓글을 달면 글쓴이에게 알린다
+        // 내 글에 다른 사람이 댓글을 달면 글쓴이에게 알린다 (글쓴이가 차단한 사람의 댓글은 알리지 않는다)
+        if (blockService.isBlocked(post.getUserId(), userId)) {
+            return;
+        }
         String nickname = userRepository.findById(userId).map(User::getNickname).orElse("누군가");
         notificationService.notifyNewComment(post, userId, nickname);
     }
@@ -68,6 +77,7 @@ public class CommentService {
     @Transactional
     public void updateComment(Long commentId, Long userId, String content) {
         Comment comment = findOwnedComment(commentId, userId, "수정 권한이 없습니다.");
+        profanityFilter.assertClean(content);
         comment.setContent(content);
         commentRepository.save(comment);
     }

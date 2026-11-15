@@ -38,6 +38,7 @@ public class PostController {
     // 게시글 목록 조회
     @GetMapping
     public ResponseEntity<ApiResponse<PageResponse<PostListResponse>>> getPosts(
+            @AuthenticationPrincipal Long userId,
             @RequestParam(required = false) String category,
             @RequestParam(required = false) Long festivalId,
             @RequestParam(defaultValue = "0") int page,
@@ -45,7 +46,7 @@ public class PostController {
             @RequestParam(defaultValue = "latest") String sort) {
 
         Pageable pageable = PageRequest.of(page, size, postSort(sort));
-        Page<PostListResponse> result = postService.getPosts(category, festivalId, pageable);
+        Page<PostListResponse> result = postService.getPosts(category, festivalId, pageable, userId);
 
         return ResponseEntity.ok(ApiResponse.success(PageResponse.of(result)));
     }

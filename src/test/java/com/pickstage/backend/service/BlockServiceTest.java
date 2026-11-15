@@ -104,4 +104,22 @@ class BlockServiceTest {
         assertEquals("상대", result.get(1).getNickname());
         assertEquals("p.png", result.get(1).getProfileImage());
     }
+
+    @Test
+    void 차단한_사용자_id_집합을_돌려주고_로그인하지_않았으면_빈_집합이다() {
+        when(userBlockRepository.findBlockedIdsByBlockerId(1L)).thenReturn(List.of(2L, 3L));
+
+        assertEquals(java.util.Set.of(2L, 3L), service.getBlockedIds(1L));
+        assertEquals(java.util.Set.of(), service.getBlockedIds(null));
+        verify(userBlockRepository, never()).findBlockedIdsByBlockerId(null);
+    }
+
+    @Test
+    void 차단_여부를_확인한다() {
+        when(userBlockRepository.existsByBlockerIdAndBlockedId(1L, 2L)).thenReturn(true);
+
+        org.junit.jupiter.api.Assertions.assertTrue(service.isBlocked(1L, 2L));
+        org.junit.jupiter.api.Assertions.assertFalse(service.isBlocked(1L, 3L));
+        org.junit.jupiter.api.Assertions.assertFalse(service.isBlocked(null, 2L));
+    }
 }

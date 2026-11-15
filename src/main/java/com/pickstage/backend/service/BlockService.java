@@ -1,8 +1,10 @@
 package com.pickstage.backend.service;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -25,6 +27,24 @@ public class BlockService {
     public BlockService(UserBlockRepository userBlockRepository, UserRepository userRepository) {
         this.userBlockRepository = userBlockRepository;
         this.userRepository = userRepository;
+    }
+
+    // 이 사람이 차단한 사용자 id들 (로그인하지 않았으면 빈 집합)
+    @Transactional(readOnly = true)
+    public Set<Long> getBlockedIds(Long blockerId) {
+        if (blockerId == null) {
+            return Set.of();
+        }
+        return new HashSet<>(userBlockRepository.findBlockedIdsByBlockerId(blockerId));
+    }
+
+    // blockerId가 targetUserId를 차단했는지
+    @Transactional(readOnly = true)
+    public boolean isBlocked(Long blockerId, Long targetUserId) {
+        if (blockerId == null || targetUserId == null) {
+            return false;
+        }
+        return userBlockRepository.existsByBlockerIdAndBlockedId(blockerId, targetUserId);
     }
 
     // 사용자 차단

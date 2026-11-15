@@ -1,9 +1,12 @@
 package com.pickstage.backend.service;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -19,6 +22,7 @@ import com.pickstage.backend.dto.PostCreateRequest;
 import com.pickstage.backend.dto.PostDetailResponse;
 import com.pickstage.backend.dto.PostListResponse;
 import com.pickstage.backend.dto.PostUpdateRequest;
+import com.pickstage.backend.entity.Comment;
 import com.pickstage.backend.entity.Post;
 import com.pickstage.backend.entity.PostImage;
 import com.pickstage.backend.entity.User;
@@ -54,11 +58,15 @@ public class PostService {
     private final PostImageRepository postImageRepository;
     private final PostLikeRepository postLikeRepository;
     private final PostViewGuard postViewGuard;
+    private final BlockService blockService;
+    private final ProfanityFilter profanityFilter;
 
     public PostService(PostRepository postRepository, FestivalRepository festivalRepository,
             UserRepository userRepository, CommentRepository commentRepository,
             PostImageRepository postImageRepository, PostLikeRepository postLikeRepository,
-            PostViewGuard postViewGuard) {
+            PostViewGuard postViewGuard, BlockService blockService, ProfanityFilter profanityFilter) {
+        this.blockService = blockService;
+        this.profanityFilter = profanityFilter;
         this.postRepository = postRepository;
         this.festivalRepository = festivalRepository;
         this.userRepository = userRepository;
@@ -68,12 +76,16 @@ public class PostService {
         this.postLikeRepository = postLikeRepository;
     }
 
-    // 게시글 목록 조회
-    public Page<PostListResponse> getPosts(String category, Long festivalId, Pageable pageable) {
+    // 게시글 목록 조회 (로그인했다면, 내가 차단한 사용자의 글은 빼고 보여준다)
+    public Page<PostListResponse> getPosts(String category, Long festivalId, Pageable pageable, Long viewerId) {
         Post.Category categoryEnum = parseCategory(category);
 
+        // NOT IN 에 빈 목록을 넣으면 쿼리가 깨질 수 있어서, 차단한 사람이 없으면 존재하지 않는 id 하나를 넣는다
+        Set<Long> blocked = blockService.getBlockedIds(viewerId);
+        Collection<Long> excluded = blocked.isEmpty() ? List.of(-1L) : blocked;
+
         Map<Long, User> authors = new HashMap<>();
-        return postRepository.findByFilters(categoryEnum, festivalId, pageable)
+        return postRepository.findByFilters(categoryEnum, festivalId, excluded, pageable)
                 .map(post -> toListResponse(post, authors));
     }
 
@@ -98,7 +110,7 @@ public class PostService {
                 .festivalTitle(getFestivalTitle(post.getFestivalId()))
                 .viewCount(post.getViewCount())
                 .likeCount(post.getLikeCount())
-                .commentCount((int) commentRepository.countByPostIdAndDeletedAtIsNull(post.getId()))
+                .commentCount((int) commentRepository.countByPostIdAndDeletedAtIsNullAndHiddenAtIsNull(post.getId()))
                 .preview(previewOf(post.getContent()))
                 .createdAt(post.getCreatedAt())
                 .build();
@@ -123,6 +135,13 @@ public class PostService {
     @Transactional
     public PostDetailResponse getPost(Long postId, Long userId, String viewerKey) {
         Post post = findVisiblePost(postId);
+        if (post.getHiddenAt() != null) {
+            throw new IllegalStateException("신고가 접수되어 검토 중인 게시글입니다.");
+        }
+        Set<Long> blocked = blockService.getBlockedIds(userId);
+        if (blocked.contains(post.getUserId())) {
+            throw new IllegalStateException("차단한 사용자의 게시글입니다.");
+        }
 
         // 글쓴이 본인의 조회와 같은 조회자의 반복 조회(새로고침, 좋아요·댓글 뒤 재조회)는 조회수에 더하지 않는다
         boolean isAuthor = userId != null && userId.equals(post.getUserId());
@@ -147,7 +166,7 @@ public class PostService {
                 .liked(userId != null && postLikeRepository.existsByPostIdAndUserId(postId, userId))
                 .createdAt(post.getCreatedAt())
                 .updatedAt(post.getUpdatedAt())
-                .comments(commentRepository.findByPostIdAndDeletedAtIsNullOrderByCreatedAtAsc(postId).stream()
+                .comments(visibleComments(postId, blocked).stream()
                         .map(comment -> CommentResponse.builder()
                                 .id(comment.getId())
                                 .parentId(comment.getParentId())
@@ -164,6 +183,22 @@ public class PostService {
                 .build();
     }
 
+    // 내가 차단한 사용자의 댓글, 그리고 그 댓글에 달린 답글은 빼고 돌려준다
+    private List<Comment> visibleComments(Long postId, Set<Long> blocked) {
+        List<Comment> all = commentRepository.findByPostIdAndDeletedAtIsNullAndHiddenAtIsNullOrderByCreatedAtAsc(postId);
+        if (blocked.isEmpty()) {
+            return all;
+        }
+        Set<Long> removedIds = all.stream()
+                .filter(c -> blocked.contains(c.getUserId()))
+                .map(Comment::getId)
+                .collect(Collectors.toSet());
+        return all.stream()
+                .filter(c -> !removedIds.contains(c.getId()))
+                .filter(c -> c.getParentId() == null || !removedIds.contains(c.getParentId()))
+                .toList();
+    }
+
     // 게시글 작성
     @Transactional
     public void createPost(Long userId, PostCreateRequest request) {
@@ -172,6 +207,7 @@ public class PostService {
             throw new IllegalArgumentException("제목과 내용을 입력해주세요.");
         }
         validatePostBody(request.getTitle(), request.getContent(), request.getImages());
+        profanityFilter.assertClean(request.getTitle(), request.getContent());
         if (request.getFestivalId() != null && !festivalRepository.existsById(request.getFestivalId())) {
             throw new IllegalStateException("존재하지 않는 공연입니다.");
         }
@@ -202,6 +238,7 @@ public class PostService {
     public void updatePost(Long postId, Long userId, PostUpdateRequest request) {
         Post post = findOwnedPost(postId, userId, "수정 권한이 없습니다.");
         validatePostBody(request.getTitle(), request.getContent(), request.getImages());
+        profanityFilter.assertClean(request.getTitle(), request.getContent());
 
         // 카테고리는 보낸 경우에만 바꾼다 (허용되지 않는 값이면 parseCategory가 거절한다)
         if (request.getCategory() != null) {

@@ -40,6 +40,8 @@ public class Post {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private LocalDateTime deletedAt;
+    // 신고가 쌓여 임시로 숨긴 시각 (관리자가 확인할 때까지 다른 사람에게 보이지 않는다)
+    private LocalDateTime hiddenAt;
 
     public void incrementLikeCount() {
         this.likeCount++;

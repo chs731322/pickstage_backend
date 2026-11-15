@@ -17,6 +17,9 @@ import com.pickstage.backend.repository.VenueReviewRepository;
 @Service
 public class ReportService {
 
+    // 처리 전 신고가 이 수만큼 쌓이면 관리자가 확인할 때까지 그 글(댓글·후기)을 임시로 숨긴다
+    static final int AUTO_HIDE_THRESHOLD = 3;
+
     private final ReportRepository reportRepository;
     private final PostRepository postRepository;
     private final CommentRepository commentRepository;
@@ -65,6 +68,37 @@ public class ReportService {
                 .status(Report.Status.PENDING)
                 .createdAt(LocalDateTime.now())
                 .build());
+
+        hideIfReportedEnough(request.getTargetType(), request.getTargetId());
+    }
+
+    // 서로 다른 사용자 3명 이상이 신고했으면 임시로 숨긴다 (사용자 신고는 관리자가 직접 판단한다)
+    private void hideIfReportedEnough(Report.TargetType type, Long targetId) {
+        if (type == Report.TargetType.USER) {
+            return;
+        }
+        long pending = reportRepository.countByTargetTypeAndTargetIdAndStatus(type, targetId, Report.Status.PENDING);
+        if (pending < AUTO_HIDE_THRESHOLD) {
+            return;
+        }
+        LocalDateTime now = LocalDateTime.now();
+        switch (type) {
+            case POST -> postRepository.findById(targetId).filter(p -> p.getHiddenAt() == null).ifPresent(p -> {
+                p.setHiddenAt(now);
+                postRepository.save(p);
+            });
+            case COMMENT -> commentRepository.findById(targetId).filter(c -> c.getHiddenAt() == null).ifPresent(c -> {
+                c.setHiddenAt(now);
+                commentRepository.save(c);
+            });
+            case VENUE_REVIEW -> venueReviewRepository.findById(targetId).filter(r -> r.getHiddenAt() == null)
+                    .ifPresent(r -> {
+                        r.setHiddenAt(now);
+                        venueReviewRepository.save(r);
+                    });
+            default -> {
+            }
+        }
     }
 
     // 신고 대상의 작성자 id. 없거나 이미 삭제된 대상이면 404

@@ -53,7 +53,7 @@ public class ReviewHighlightService {
         var festival = festivalRepository.findById(festivalId)
                 .orElseThrow(() -> new IllegalStateException("존재하지 않는 공연입니다."));
 
-        List<Post> reviews = postRepository.findByCategoryAndFestivalIdAndDeletedAtIsNull(
+        List<Post> reviews = postRepository.findByCategoryAndFestivalIdAndDeletedAtIsNullAndHiddenAtIsNull(
                 Post.Category.review, festivalId);
         List<String> texts = reviews.stream().map(p -> p.getTitle() + "\n" + p.getContent()).toList();
 
@@ -66,7 +66,7 @@ public class ReviewHighlightService {
         var venue = venueRepository.findById(venueId)
                 .orElseThrow(() -> new IllegalStateException("존재하지 않는 공연장입니다."));
 
-        List<VenueReview> reviews = venueReviewRepository.findByVenueIdAndDeletedAtIsNull(venueId);
+        List<VenueReview> reviews = venueReviewRepository.findByVenueIdAndDeletedAtIsNullAndHiddenAtIsNull(venueId);
         List<String> texts = reviews.stream().map(VenueReview::getContent).toList();
 
         return getOrGenerate(ReviewHighlightCache.TargetType.venue, venueId, venue.getName(), texts);

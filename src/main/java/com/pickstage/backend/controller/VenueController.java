@@ -1,6 +1,7 @@
 package com.pickstage.backend.controller;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -37,8 +38,9 @@ public class VenueController {
 
     // 공연장 상세 조회
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<VenueDetailResponse>> getVenueDetail(@PathVariable Long id) {
-        VenueDetailResponse venueDetail = venueService.getVenueDetail(id);
+    public ResponseEntity<ApiResponse<VenueDetailResponse>> getVenueDetail(
+            @AuthenticationPrincipal Long userId, @PathVariable Long id) {
+        VenueDetailResponse venueDetail = venueService.getVenueDetail(id, userId);
         return ResponseEntity.ok(ApiResponse.success(venueDetail));
     }
 
