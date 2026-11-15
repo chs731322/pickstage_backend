@@ -13,6 +13,7 @@ import com.pickstage.backend.repository.InterestArtistRepository;
 import com.pickstage.backend.repository.NotificationRepository;
 import com.pickstage.backend.repository.PasswordResetTokenRepository;
 import com.pickstage.backend.repository.RefreshTokenRepository;
+import com.pickstage.backend.repository.UserBlockRepository;
 import com.pickstage.backend.repository.UserRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -36,6 +37,7 @@ public class UserService {
         private final BookmarkService bookmarkService;
         private final UploadedImagePolicy uploadedImagePolicy;
         private final ProfanityFilter profanityFilter;
+        private final UserBlockRepository userBlockRepository;
 
         public UserService(
                         UserRepository userRepository,
@@ -48,8 +50,10 @@ public class UserService {
                         NotificationRepository notificationRepository,
                         BookmarkService bookmarkService,
                         UploadedImagePolicy uploadedImagePolicy,
-                        ProfanityFilter profanityFilter) {
+                        ProfanityFilter profanityFilter,
+                        UserBlockRepository userBlockRepository) {
 
+                this.userBlockRepository = userBlockRepository;
                 this.profanityFilter = profanityFilter;
                 this.userRepository = userRepository;
                 this.refreshTokenRepository = refreshTokenRepository;
@@ -186,6 +190,8 @@ public class UserService {
                 interestArtistRepository.deleteByUserId(userId);
                 checklistRepository.deleteByUserId(userId);
                 notificationRepository.deleteByUserId(userId);
+                // 차단 기록(내가 차단한 사람, 나를 차단한 사람)도 지운다
+                userBlockRepository.deleteByBlockerIdOrBlockedId(userId, userId);
         }
 
         // 회원 목록 조회

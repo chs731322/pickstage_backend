@@ -14,6 +14,9 @@ public interface UserBlockRepository extends JpaRepository<UserBlock, Long> {
     // 차단 해제
     void deleteByBlockerIdAndBlockedId(Long blockerId, Long blockedId);
 
+    // 회원 탈퇴 시: 내가 차단한 기록과 나를 차단한 기록을 모두 지운다
+    void deleteByBlockerIdOrBlockedId(Long blockerId, Long blockedId);
+
     // 내가 차단한 사람의 id만 (목록 화면에서 그 사람의 글을 거를 때 쓴다)
     @Query("SELECT b.blockedId FROM UserBlock b WHERE b.blockerId = :blockerId")
     List<Long> findBlockedIdsByBlockerId(Long blockerId);
