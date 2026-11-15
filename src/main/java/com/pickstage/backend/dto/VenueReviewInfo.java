@@ -12,6 +12,8 @@ import java.util.List;
 public class VenueReviewInfo {
 
     private Long id;
+    // 후기를 쓴 사용자의 id (신고·차단에 쓴다)
+    private Long authorId;
     private String nickname;
     private Integer rating;
     private String content;

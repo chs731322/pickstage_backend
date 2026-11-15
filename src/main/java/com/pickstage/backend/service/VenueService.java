@@ -111,6 +111,7 @@ public class VenueService {
                 .filter(review -> !blocked.contains(review.getUserId()))
                 .map(review -> VenueReviewInfo.builder()
                         .id(review.getId())
+                        .authorId(review.getUserId())
                         .nickname(userRepository.findById(review.getUserId())
                                 .map(com.pickstage.backend.entity.User::getNickname)
                                 .orElse(null))
