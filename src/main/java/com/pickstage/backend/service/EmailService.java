@@ -177,6 +177,11 @@ public class EmailService {
         );
     }
 
+    // 운영자에게 보내는 안내 메일 (새 신고 접수 등)
+    public void sendAdminNotice(String to, String subject, String text) {
+        deliver(to, subject, text);
+    }
+
     private static RestClient buildResendClient() {
         JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory(
                 HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build());

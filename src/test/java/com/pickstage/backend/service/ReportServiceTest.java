@@ -37,6 +37,7 @@ class ReportServiceTest {
     private CommentRepository commentRepository;
     private VenueReviewRepository venueReviewRepository;
     private UserRepository userRepository;
+    private ReportNotifier reportNotifier;
     private ReportService service;
 
     @BeforeEach
@@ -46,8 +47,9 @@ class ReportServiceTest {
         commentRepository = mock(CommentRepository.class);
         venueReviewRepository = mock(VenueReviewRepository.class);
         userRepository = mock(UserRepository.class);
+        reportNotifier = mock(ReportNotifier.class);
         service = new ReportService(reportRepository, postRepository, commentRepository, venueReviewRepository,
-                userRepository);
+                userRepository, reportNotifier);
     }
 
     private ReportCreateRequest request(Report.TargetType type, Long targetId, Report.Reason reason, String detail) {
@@ -205,6 +207,32 @@ class ReportServiceTest {
 
         service.createReport(1L, request(Report.TargetType.USER, 2L, Report.Reason.ABUSE, null));
 
-        verify(reportRepository, never()).countByTargetTypeAndTargetIdAndStatus(any(), any(), any());
+        // 사용자 신고는 쌓여도 숨기지 않고, 운영자에게는 알린다
+        verify(reportNotifier).notifyNewReport(any(Report.class), org.mockito.ArgumentMatchers.eq(10L));
+    }
+
+    @Test
+    void 신고가_접수되면_운영자에게_쌓인_신고_수와_함께_알린다() {
+        when(postRepository.findById(10L)).thenReturn(Optional.of(Post.builder().id(10L).userId(2L).build()));
+        when(reportRepository.countByTargetTypeAndTargetIdAndStatus(Report.TargetType.POST, 10L, Report.Status.PENDING))
+                .thenReturn(2L);
+
+        service.createReport(1L, request(Report.TargetType.POST, 10L, Report.Reason.SPAM, "광고예요"));
+
+        ArgumentCaptor<Report> captor = ArgumentCaptor.forClass(Report.class);
+        verify(reportNotifier).notifyNewReport(captor.capture(), org.mockito.ArgumentMatchers.eq(2L));
+        assertEquals(10L, captor.getValue().getTargetId());
+        assertEquals("광고예요", captor.getValue().getDetail());
+    }
+
+    @Test
+    void 접수에_실패하면_알리지_않는다() {
+        when(postRepository.findById(10L)).thenReturn(Optional.of(Post.builder().id(10L).userId(2L).build()));
+        when(reportRepository.existsByReporterIdAndTargetTypeAndTargetId(1L, Report.TargetType.POST, 10L))
+                .thenReturn(true);
+
+        assertThrows(DuplicateRequestException.class,
+                () -> service.createReport(1L, request(Report.TargetType.POST, 10L, Report.Reason.SPAM, null)));
+        verify(reportNotifier, never()).notifyNewReport(any(), org.mockito.ArgumentMatchers.anyLong());
     }
 }

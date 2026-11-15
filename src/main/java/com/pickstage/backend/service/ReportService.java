@@ -25,10 +25,12 @@ public class ReportService {
     private final CommentRepository commentRepository;
     private final VenueReviewRepository venueReviewRepository;
     private final UserRepository userRepository;
+    private final ReportNotifier reportNotifier;
 
     public ReportService(ReportRepository reportRepository, PostRepository postRepository,
             CommentRepository commentRepository, VenueReviewRepository venueReviewRepository,
-            UserRepository userRepository) {
+            UserRepository userRepository, ReportNotifier reportNotifier) {
+        this.reportNotifier = reportNotifier;
         this.reportRepository = reportRepository;
         this.postRepository = postRepository;
         this.commentRepository = commentRepository;
@@ -59,7 +61,7 @@ public class ReportService {
             throw new DuplicateRequestException("이미 신고한 대상입니다.");
         }
 
-        reportRepository.save(Report.builder()
+        Report report = Report.builder()
                 .reporterId(reporterId)
                 .targetType(request.getTargetType())
                 .targetId(request.getTargetId())
@@ -67,18 +69,18 @@ public class ReportService {
                 .detail(detail)
                 .status(Report.Status.PENDING)
                 .createdAt(LocalDateTime.now())
-                .build());
+                .build();
+        reportRepository.save(report);
 
-        hideIfReportedEnough(request.getTargetType(), request.getTargetId());
+        long pending = reportRepository.countByTargetTypeAndTargetIdAndStatus(
+                request.getTargetType(), request.getTargetId(), Report.Status.PENDING);
+        hideIfReportedEnough(request.getTargetType(), request.getTargetId(), pending);
+        reportNotifier.notifyNewReport(report, pending);
     }
 
     // 서로 다른 사용자 3명 이상이 신고했으면 임시로 숨긴다 (사용자 신고는 관리자가 직접 판단한다)
-    private void hideIfReportedEnough(Report.TargetType type, Long targetId) {
-        if (type == Report.TargetType.USER) {
-            return;
-        }
-        long pending = reportRepository.countByTargetTypeAndTargetIdAndStatus(type, targetId, Report.Status.PENDING);
-        if (pending < AUTO_HIDE_THRESHOLD) {
+    private void hideIfReportedEnough(Report.TargetType type, Long targetId, long pending) {
+        if (type == Report.TargetType.USER || pending < AUTO_HIDE_THRESHOLD) {
             return;
         }
         LocalDateTime now = LocalDateTime.now();

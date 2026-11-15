@@ -210,6 +210,7 @@ public class UserService {
                                 .nickname(user.getNickname())
                                 .profileImage(user.getProfileImage())
                                 .role(user.getRole().name())
+                                .isBanned(user.getBannedAt() != null)
                                 .isWithdrawn(user.getDeletedAt() != null)
                                 .createdAt(user.getCreatedAt())
                                 .build());

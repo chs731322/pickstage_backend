@@ -22,5 +22,8 @@ public class AdminUserResponse {
 
     @Getter(onMethod_ = @__(@JsonProperty("isWithdrawn")))
     private boolean isWithdrawn;
+
+    @Getter(onMethod_ = @__(@JsonProperty("isBanned")))
+    private boolean isBanned;
     private LocalDateTime createdAt;
 }

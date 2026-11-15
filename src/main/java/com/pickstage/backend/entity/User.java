@@ -39,6 +39,8 @@ public class User {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private LocalDateTime deletedAt;
+    // 운영 정책 위반으로 이용을 정지한 시각 (비어 있으면 정상). 정지되면 로그인과 API 호출이 모두 막힌다.
+    private LocalDateTime bannedAt;
 
     // 비밀번호 변경
     public void updatePassword(String passwordHash) {
@@ -75,6 +77,18 @@ public class User {
         this.profileImage = null;
         this.deletedAt = now;
         this.updatedAt = now;
+    }
+
+    // 이용 정지 / 정지 해제
+    public void ban() {
+        LocalDateTime now = LocalDateTime.now();
+        this.bannedAt = now;
+        this.updatedAt = now;
+    }
+
+    public void unban() {
+        this.bannedAt = null;
+        this.updatedAt = LocalDateTime.now();
     }
 
     public enum SocialProvider {

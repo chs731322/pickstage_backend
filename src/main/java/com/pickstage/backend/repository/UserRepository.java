@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface UserRepository extends JpaRepository<User, Long> {
@@ -15,8 +16,11 @@ public interface UserRepository extends JpaRepository<User, Long> {
     // 이메일로 유저 찾기 (로그인, 중복확인)
     Optional<User> findByEmail(String email);
 
-    // 토큰의 사용자가 탈퇴하지 않은 계정인지 확인 (JWT 필터에서 사용)
-    boolean existsByIdAndDeletedAtIsNull(Long id);
+    // 토큰의 사용자가 탈퇴하지도, 정지되지도 않은 계정인지 확인 (JWT 필터에서 사용)
+    boolean existsByIdAndDeletedAtIsNullAndBannedAtIsNull(Long id);
+
+    // 이 권한을 가진 (탈퇴하지 않은) 회원들. 새 신고를 알릴 관리자를 찾을 때 쓴다.
+    List<User> findByRoleAndDeletedAtIsNull(User.Role role);
 
     // 이메일 존재 여부 확인 (중복확인)
     boolean existsByEmail(String email);

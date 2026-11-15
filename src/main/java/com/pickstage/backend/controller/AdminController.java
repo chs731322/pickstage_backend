@@ -1,7 +1,9 @@
 package com.pickstage.backend.controller;
 
+import java.util.List;
 import java.util.Map;
 
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -16,6 +18,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.pickstage.backend.dto.AdminFAQRequest;
+import com.pickstage.backend.dto.AdminReportResolveRequest;
+import com.pickstage.backend.dto.AdminReportResponse;
 import com.pickstage.backend.dto.AdminFestivalRequest;
 import com.pickstage.backend.dto.FestivalDraftRequest;
 import com.pickstage.backend.dto.FestivalDraftResponse;
@@ -24,6 +28,7 @@ import com.pickstage.backend.dto.AdminUserResponse;
 import com.pickstage.backend.dto.PageResponse;
 import com.pickstage.backend.dto.RoleUpdateRequest;
 import com.pickstage.backend.global.response.ApiResponse;
+import com.pickstage.backend.service.AdminReportService;
 import com.pickstage.backend.service.FestivalDraftService;
 import com.pickstage.backend.service.FestivalService;
 import com.pickstage.backend.service.NoticeService;
@@ -42,9 +47,12 @@ public class AdminController {
     private final FestivalDraftService festivalDraftService;
     private final NoticeService noticeService;
     private final FAQService faqService;
+    private final AdminReportService adminReportService;
 
     public AdminController(PostService postService, ReviewService reviewService, UserService userService,
-                           FestivalService festivalService, NoticeService noticeService, FAQService faqService, FestivalDraftService festivalDraftService) {
+                           FestivalService festivalService, NoticeService noticeService, FAQService faqService, FestivalDraftService festivalDraftService,
+                           AdminReportService adminReportService) {
+        this.adminReportService = adminReportService;
         this.postService = postService;
         this.reviewService = reviewService;
         this.userService = userService;
@@ -166,6 +174,36 @@ public class AdminController {
             @AuthenticationPrincipal Long userId, @PathVariable Long id) {
         reviewService.forceDeleteReview(userId, id);
         return ResponseEntity.ok(ApiResponse.success("후기가 삭제되었습니다."));
+    }
+
+    // 신고 목록 (status=PENDING 처리 전 / DONE 처리 완료). 같은 대상에 들어온 신고는 하나로 묶어서 보여준다
+    @GetMapping("/reports")
+    public ResponseEntity<ApiResponse<List<AdminReportResponse>>> getReports(
+            @AuthenticationPrincipal Long userId, @RequestParam(defaultValue = "PENDING") String status) {
+        boolean done = "DONE".equalsIgnoreCase(status);
+        return ResponseEntity.ok(ApiResponse.success(adminReportService.getReports(userId, done)));
+    }
+
+    // 신고 처리 (DELETE: 삭제 / DISMISS: 문제 없음, 숨김 해제)
+    @PostMapping("/reports/resolve")
+    public ResponseEntity<ApiResponse<Void>> resolveReport(
+            @AuthenticationPrincipal Long userId, @Valid @RequestBody AdminReportResolveRequest request) {
+        adminReportService.resolve(userId, request);
+        return ResponseEntity.ok(ApiResponse.success("신고를 처리했습니다."));
+    }
+
+    // 사용자 이용 정지
+    @PostMapping("/users/{id}/ban")
+    public ResponseEntity<ApiResponse<Void>> banUser(@AuthenticationPrincipal Long userId, @PathVariable Long id) {
+        adminReportService.banUser(userId, id);
+        return ResponseEntity.ok(ApiResponse.success("이용을 정지했습니다."));
+    }
+
+    // 사용자 이용 정지 해제
+    @DeleteMapping("/users/{id}/ban")
+    public ResponseEntity<ApiResponse<Void>> unbanUser(@AuthenticationPrincipal Long userId, @PathVariable Long id) {
+        adminReportService.unbanUser(userId, id);
+        return ResponseEntity.ok(ApiResponse.success("정지를 해제했습니다."));
     }
 
     @PatchMapping("/users/{id}")

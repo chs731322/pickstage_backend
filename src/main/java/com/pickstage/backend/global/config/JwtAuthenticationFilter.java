@@ -37,8 +37,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (token != null && jwtProvider.validateToken(token) && jwtProvider.isAccessToken(token)) {
             Long userId = jwtProvider.getUserId(token);
 
-            // 토큰은 서명만 맞으면 유효하므로, 탈퇴한 계정의 토큰(만료 전)은 인증하지 않는다
-            if (userRepository.existsByIdAndDeletedAtIsNull(userId)) {
+            // 토큰은 서명만 맞으면 유효하므로, 탈퇴했거나 이용이 정지된 계정의 토큰(만료 전)은 인증하지 않는다
+            if (userRepository.existsByIdAndDeletedAtIsNullAndBannedAtIsNull(userId)) {
                 String role = jwtProvider.getRole(token);
 
                 UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(

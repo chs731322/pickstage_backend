@@ -38,6 +38,8 @@ public class AuthService {
     private final GoogleService googleService;
     private final ProfanityFilter profanityFilter;
 
+    static final String BANNED_MESSAGE = "이용이 정지된 계정입니다. 문의는 고객센터로 연락해주세요.";
+
     public AuthService(UserRepository userRepository,
                        RefreshTokenRepository refreshTokenRepository,
                        PasswordResetTokenRepository passwordResetTokenRepository,
@@ -137,6 +139,8 @@ public class AuthService {
             );
         }
 
+        requireNotBanned(user);
+
         return generateTokens(user);
     }
 
@@ -172,6 +176,7 @@ public class AuthService {
                         "탈퇴한 회원입니다."
                 );
             }
+            requireNotBanned(existingUser);
 
             return generateTokens(existingUser);
         }
@@ -284,6 +289,7 @@ public class AuthService {
                         "탈퇴한 회원입니다."
                 );
             }
+            requireNotBanned(existingUser);
 
             return generateTokens(existingUser);
         }
@@ -386,6 +392,7 @@ public class AuthService {
                         "탈퇴한 회원입니다."
                 );
             }
+            requireNotBanned(existingUser);
 
             return generateTokens(existingUser);
         }
@@ -494,8 +501,8 @@ public class AuthService {
                         )
                 );
 
-        // 탈퇴한 사용자는 토큰 재발급 불가
-        if (user.getDeletedAt() != null) {
+        // 탈퇴했거나 정지된 사용자는 토큰 재발급 불가
+        if (user.getDeletedAt() != null || user.getBannedAt() != null) {
             throw new IllegalArgumentException(
                     "유효하지 않은 토큰입니다."
             );
@@ -681,5 +688,12 @@ public class AuthService {
                                 .build()
                 )
                 .build();
+    }
+
+    // 이용이 정지된 계정이면 로그인을 막는다
+    private void requireNotBanned(User user) {
+        if (user.getBannedAt() != null) {
+            throw new IllegalArgumentException(BANNED_MESSAGE);
+        }
     }
 }
