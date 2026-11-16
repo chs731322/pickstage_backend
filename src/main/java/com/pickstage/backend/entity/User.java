@@ -92,7 +92,7 @@ public class User {
     }
 
     public enum SocialProvider {
-        none, kakao, google, naver
+        none, kakao, google, naver, apple
     }
 
     public enum Role {

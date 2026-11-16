@@ -39,6 +39,11 @@ public class GoogleService {
 
     // Access Token 발급
     public String getAccessToken(String code) {
+        return getAccessToken(code, redirectUri);
+    }
+
+    // 웹과 앱은 돌아오는 주소(redirect URI)가 달라서, 인가코드를 받은 때와 같은 주소로 교환해야 한다
+    public String getAccessToken(String code, String redirectUri) {
 
         MultiValueMap<String, String> body =
                 new LinkedMultiValueMap<>();
@@ -120,5 +125,19 @@ public class GoogleService {
                     "구글 서버와 통신 중 오류가 발생했습니다."
             );
         }
+    }
+
+    // 구글 로그인 화면 주소 (앱용: 돌아올 주소와 state를 받는다)
+    public String authorizeUrl(String redirectUri, String state) {
+        return org.springframework.web.util.UriComponentsBuilder
+                .fromUriString("https://accounts.google.com/o/oauth2/v2/auth")
+                .queryParam("client_id", clientId)
+                .queryParam("redirect_uri", redirectUri)
+                .queryParam("response_type", "code")
+                .queryParam("scope", "openid email profile")
+                .queryParam("state", state)
+                .build()
+                .encode()
+                .toUriString();
     }
 }

@@ -36,6 +36,7 @@ public class AuthService {
     private final KakaoService kakaoService;
     private final NaverService naverService;
     private final GoogleService googleService;
+    private final AppleService appleService;
     private final ProfanityFilter profanityFilter;
 
     static final String BANNED_MESSAGE = "이용이 정지된 계정입니다. 문의는 고객센터로 연락해주세요.";
@@ -49,6 +50,7 @@ public class AuthService {
                        KakaoService kakaoService,
                        NaverService naverService,
                        GoogleService googleService,
+                       AppleService appleService,
                        ProfanityFilter profanityFilter) {
 
         this.profanityFilter = profanityFilter;
@@ -61,6 +63,7 @@ public class AuthService {
         this.kakaoService = kakaoService;
         this.naverService = naverService;
         this.googleService = googleService;
+        this.appleService = appleService;
     }
 
     // 이메일 중복 확인
@@ -147,10 +150,18 @@ public class AuthService {
     // 카카오 로그인
     @Transactional
     public AuthResponse kakaoLogin(String code) {
+        return kakaoLogin(code, null);
+    }
+
+    // redirectUri가 null이면 웹용 설정 주소를 쓴다 (앱은 앱용 주소로 받았으므로 같은 주소를 넘긴다)
+    @Transactional
+    public AuthResponse kakaoLogin(String code, String redirectUri) {
 
         // 인가코드로 카카오 Access Token 발급
         String kakaoAccessToken =
-                kakaoService.getAccessToken(code);
+                redirectUri == null
+                        ? kakaoService.getAccessToken(code)
+                        : kakaoService.getAccessToken(code, redirectUri);
 
         // 카카오 사용자 정보 조회
         KakaoUserResponse kakaoUser =
@@ -358,13 +369,105 @@ public class AuthService {
         return generateTokens(newUser);
     }
 
+    // 애플 로그인 (앱이 Apple에서 받은 identity token으로 로그인한다. 처음이면 자동 가입)
+    @Transactional
+    public AuthResponse appleLogin(String identityToken, String fullName) {
+
+        AppleService.AppleUser appleUser =
+                appleService.verifyIdentityToken(identityToken);
+
+        // 기존 애플 회원인지 확인
+        User existingUser =
+                userRepository
+                        .findBySocialProviderAndSocialId(
+                                User.SocialProvider.apple,
+                                appleUser.subject()
+                        )
+                        .orElse(null);
+
+        if (existingUser != null) {
+
+            // 탈퇴한 사용자는 로그인 불가
+            if (existingUser.getDeletedAt() != null) {
+                throw new IllegalArgumentException(
+                        "탈퇴한 회원입니다."
+                );
+            }
+            requireNotBanned(existingUser);
+
+            return generateTokens(existingUser);
+        }
+
+        // 신규 가입: Apple은 이메일을 처음 로그인할 때만 알려준다
+        String email = appleUser.email();
+
+        if (email == null || email.isBlank()) {
+            throw new IllegalArgumentException(
+                    "애플 계정 이메일 정보를 가져올 수 없습니다. "
+                            + "설정 > Apple ID > 로그인 및 보안 > Apple로 로그인에서 PICKSTAGE를 삭제한 뒤 다시 시도해주세요."
+            );
+        }
+
+        // 동일 이메일이 이미 존재하는 경우
+        if (userRepository.existsByEmail(email)) {
+            throw new IllegalArgumentException(
+                    "이미 다른 방식으로 가입된 이메일입니다."
+            );
+        }
+
+        String nickname = uniqueAppleNickname(fullName, appleUser.subject());
+
+        User newUser = User.builder()
+                .email(email)
+                .passwordHash(null)
+                .nickname(nickname)
+                .profileImage(null)
+                .socialProvider(User.SocialProvider.apple)
+                .socialId(appleUser.subject())
+                .role(User.Role.user)
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
+
+        userRepository.save(newUser);
+
+        return generateTokens(newUser);
+    }
+
+    // 닉네임: 받은 이름이 쓸 만하면 그것으로, 아니면 "애플사용자" + 번호. 이미 있으면 번호를 붙인다.
+    private String uniqueAppleNickname(String fullName, String subject) {
+        String base = fullName == null ? "" : fullName.trim();
+        if (base.length() > 10) {
+            base = base.substring(0, 10);
+        }
+        if (base.length() < 2 || profanityFilter.containsProfanity(base)) {
+            base = "애플사용자";
+        }
+        String nickname = base;
+        int attempt = 0;
+        while (userRepository.existsByNickname(nickname)) {
+            attempt++;
+            String suffix = attempt == 1 ? subject.substring(Math.max(0, subject.length() - 4)) : String.valueOf(attempt);
+            nickname = base + suffix;
+        }
+        return nickname;
+    }
+
     // 구글 로그인
     @Transactional
     public AuthResponse googleLogin(String code) {
+        return googleLogin(code, null);
+    }
+
+    // redirectUri가 null이면 웹용 설정 주소를 쓴다
+    @Transactional
+    public AuthResponse googleLogin(String code, String redirectUri) {
 
         // 인가코드로 구글 Access Token 발급
         String googleAccessToken =
-                googleService.getAccessToken(code);
+                redirectUri == null
+                        ? googleService.getAccessToken(code)
+                        : googleService.getAccessToken(code, redirectUri);
 
         // 구글 사용자 정보 조회
         GoogleUserResponse googleUser =

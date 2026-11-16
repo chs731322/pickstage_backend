@@ -36,7 +36,8 @@ class AuthServiceBanTest {
         jwtProvider = mock(JwtProvider.class);
         service = new AuthService(userRepository, mock(RefreshTokenRepository.class),
                 mock(PasswordResetTokenRepository.class), jwtProvider, passwordEncoder, mock(EmailService.class),
-                mock(KakaoService.class), mock(NaverService.class), mock(GoogleService.class), new ProfanityFilter());
+                mock(KakaoService.class), mock(NaverService.class), mock(GoogleService.class), mock(AppleService.class),
+                new ProfanityFilter());
     }
 
     private SigninRequest request(String password) {

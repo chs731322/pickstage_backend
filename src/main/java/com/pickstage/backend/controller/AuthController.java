@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.pickstage.backend.dto.AppleLoginRequest;
 import com.pickstage.backend.dto.AuthResponse;
 import com.pickstage.backend.dto.EmailSendRequest;
 import com.pickstage.backend.dto.EmailVerifyRequest;
@@ -153,6 +154,22 @@ public class AuthController {
 
         AuthResponse response =
                 authService.googleLogin(code);
+
+        return ResponseEntity.ok(
+                ApiResponse.success(response)
+        );
+    }
+
+    // 애플 로그인 (앱이 Apple에서 받은 identity token으로 로그인·가입)
+    @PostMapping("/apple")
+    public ResponseEntity<ApiResponse<AuthResponse>> appleLogin(
+            @Valid @RequestBody AppleLoginRequest request) {
+
+        AuthResponse response =
+                authService.appleLogin(
+                        request.getIdentityToken(),
+                        request.getFullName()
+                );
 
         return ResponseEntity.ok(
                 ApiResponse.success(response)
