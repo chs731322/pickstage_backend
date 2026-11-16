@@ -83,7 +83,8 @@ public class SecurityConfig {
                                 "/api/artists/**",
                                 "/api/posts/**",
                                 "/api/notices/**",
-                                "/api/faqs/**"
+                                "/api/faqs/**",
+                                "/api/weather/**"
                         )
                         .permitAll()
 
