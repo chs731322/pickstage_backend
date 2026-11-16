@@ -1,11 +1,13 @@
 package com.pickstage.backend.repository;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 
 import com.pickstage.backend.entity.Notification;
 
@@ -36,6 +38,11 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
 
     // 관리자 공연 삭제 시 해당 공연 관련 알림 일괄 삭제
     void deleteByFestivalId(Long festivalId);
+
+    // 앱 아이콘 배지용: 사용자별로 읽지 않은(발송된) 알림 수 -> [사용자 id, 개수]
+    @Query("SELECT n.userId, COUNT(n) FROM Notification n " +
+            "WHERE n.userId IN :userIds AND n.isSent = true AND n.isRead = false GROUP BY n.userId")
+    List<Object[]> countUnreadByUserIds(Collection<Long> userIds);
 
     // 회원 탈퇴 시 해당 사용자의 알림 일괄 삭제
     void deleteByUserId(Long userId);

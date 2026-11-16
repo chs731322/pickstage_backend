@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.pickstage.backend.entity.Notification;
 import com.pickstage.backend.repository.NotificationRepository;
 import com.pickstage.backend.service.NotificationService;
+import com.pickstage.backend.service.PushService;
 
 @Component
 public class NotificationScheduler {
@@ -20,10 +21,13 @@ public class NotificationScheduler {
 
     private final NotificationRepository notificationRepository;
     private final NotificationService notificationService;
+    private final PushService pushService;
 
-    public NotificationScheduler(NotificationRepository notificationRepository, NotificationService notificationService) {
+    public NotificationScheduler(NotificationRepository notificationRepository, NotificationService notificationService,
+            PushService pushService) {
         this.notificationRepository = notificationRepository;
         this.notificationService = notificationService;
+        this.pushService = pushService;
     }
 
     // 10분마다 확인해서, 오전 9시가 지났으면 오늘 시작하는 공연의 당일 알림을 보낸다.
@@ -47,5 +51,8 @@ public class NotificationScheduler {
         for (Notification notification : dueNotifications) {
             notification.markAsSent();
         }
+
+        // 발송 처리가 확정(커밋)되면 앱 푸시도 보낸다
+        pushService.pushAfterCommit(dueNotifications);
     }
 }

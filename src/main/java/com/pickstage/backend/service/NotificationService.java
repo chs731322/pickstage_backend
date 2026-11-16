@@ -2,6 +2,7 @@ package com.pickstage.backend.service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -35,9 +36,11 @@ public class NotificationService {
     private final NotificationRepository notificationRepository;
     private final FestivalRepository festivalRepository;
     private final BookmarkRepository bookmarkRepository;
+    private final PushService pushService;
 
     public NotificationService(NotificationRepository notificationRepository, FestivalRepository festivalRepository,
-            BookmarkRepository bookmarkRepository) {
+            BookmarkRepository bookmarkRepository, PushService pushService) {
+        this.pushService = pushService;
         this.notificationRepository = notificationRepository;
         this.festivalRepository = festivalRepository;
         this.bookmarkRepository = bookmarkRepository;
@@ -143,6 +146,7 @@ public class NotificationService {
     public int createConcertDayNotifications(LocalDate today) {
         int created = 0;
         LocalDateTime now = LocalDateTime.now();
+        List<Notification> createdNotifications = new ArrayList<>();
 
         for (Festival festival : festivalRepository.findByStartDate(today)) {
             Set<Long> alreadyNotified = new HashSet<>();
@@ -155,7 +159,7 @@ public class NotificationService {
                 if (!alreadyNotified.add(bookmark.getUserId())) {
                     continue;
                 }
-                notificationRepository.save(Notification.builder()
+                createdNotifications.add(notificationRepository.save(Notification.builder()
                         .userId(bookmark.getUserId())
                         .festivalId(festival.getId())
                         .type(Notification.Type.concert_day)
@@ -166,10 +170,12 @@ public class NotificationService {
                         .scheduledAt(today.atTime(9, 0))
                         .sentAt(now)
                         .createdAt(now)
-                        .build());
+                        .build()));
                 created++;
             }
         }
+        // 새로 만든 공연 당일 알림은 앱 푸시로도 보낸다 (저장이 확정된 뒤)
+        pushService.pushAfterCommit(createdNotifications);
         return created;
     }
 
@@ -260,7 +266,7 @@ public class NotificationService {
             postTitle = postTitle.substring(0, 30) + "…";
         }
         LocalDateTime now = LocalDateTime.now();
-        notificationRepository.save(Notification.builder()
+        Notification saved = notificationRepository.save(Notification.builder()
                 .userId(post.getUserId())
                 .postId(post.getId())
                 .type(Notification.Type.comment)
@@ -272,5 +278,7 @@ public class NotificationService {
                 .sentAt(now)
                 .createdAt(now)
                 .build());
+        // 댓글 알림은 만들 때 바로 발송된 상태라, 앱 푸시도 함께 보낸다
+        pushService.pushAfterCommit(List.of(saved));
     }
 }

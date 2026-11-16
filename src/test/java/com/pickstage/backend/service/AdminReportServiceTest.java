@@ -33,6 +33,7 @@ import com.pickstage.backend.entity.VenueReview;
 import com.pickstage.backend.global.exception.DuplicateRequestException;
 import com.pickstage.backend.repository.CommentRepository;
 import com.pickstage.backend.repository.PostRepository;
+import com.pickstage.backend.repository.PushTokenRepository;
 import com.pickstage.backend.repository.RefreshTokenRepository;
 import com.pickstage.backend.repository.ReportRepository;
 import com.pickstage.backend.repository.UserRepository;
@@ -48,6 +49,7 @@ class AdminReportServiceTest {
     private VenueReviewRepository venueReviewRepository;
     private UserRepository userRepository;
     private RefreshTokenRepository refreshTokenRepository;
+    private PushTokenRepository pushTokenRepository;
     private AdminReportService service;
 
     @BeforeEach
@@ -58,8 +60,9 @@ class AdminReportServiceTest {
         venueReviewRepository = mock(VenueReviewRepository.class);
         userRepository = mock(UserRepository.class);
         refreshTokenRepository = mock(RefreshTokenRepository.class);
+        pushTokenRepository = mock(PushTokenRepository.class);
         service = new AdminReportService(reportRepository, postRepository, commentRepository, venueReviewRepository,
-                userRepository, refreshTokenRepository);
+                userRepository, refreshTokenRepository, pushTokenRepository);
         when(userRepository.findById(ADMIN)).thenReturn(Optional.of(User.builder().id(ADMIN).role(User.Role.admin).build()));
     }
 
@@ -218,6 +221,7 @@ class AdminReportServiceTest {
         assertNotNull(target.getBannedAt());
         verify(userRepository).save(target);
         verify(refreshTokenRepository).deleteByUserId(3L);
+        verify(pushTokenRepository).deleteByUserId(3L);
         verify(reportRepository).markHandled(eq(Report.TargetType.USER), eq(3L), eq(Report.Status.PENDING),
                 eq(Report.Status.DELETED), any(), eq(ADMIN));
     }

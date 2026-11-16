@@ -12,6 +12,7 @@ import com.pickstage.backend.repository.EmailVerificationRepository;
 import com.pickstage.backend.repository.InterestArtistRepository;
 import com.pickstage.backend.repository.NotificationRepository;
 import com.pickstage.backend.repository.PasswordResetTokenRepository;
+import com.pickstage.backend.repository.PushTokenRepository;
 import com.pickstage.backend.repository.RefreshTokenRepository;
 import com.pickstage.backend.repository.UserBlockRepository;
 import com.pickstage.backend.repository.UserRepository;
@@ -38,6 +39,7 @@ public class UserService {
         private final UploadedImagePolicy uploadedImagePolicy;
         private final ProfanityFilter profanityFilter;
         private final UserBlockRepository userBlockRepository;
+        private final PushTokenRepository pushTokenRepository;
 
         public UserService(
                         UserRepository userRepository,
@@ -51,8 +53,10 @@ public class UserService {
                         BookmarkService bookmarkService,
                         UploadedImagePolicy uploadedImagePolicy,
                         ProfanityFilter profanityFilter,
-                        UserBlockRepository userBlockRepository) {
+                        UserBlockRepository userBlockRepository,
+                        PushTokenRepository pushTokenRepository) {
 
+                this.pushTokenRepository = pushTokenRepository;
                 this.userBlockRepository = userBlockRepository;
                 this.profanityFilter = profanityFilter;
                 this.userRepository = userRepository;
@@ -192,6 +196,8 @@ public class UserService {
                 notificationRepository.deleteByUserId(userId);
                 // 차단 기록(내가 차단한 사람, 나를 차단한 사람)도 지운다
                 userBlockRepository.deleteByBlockerIdOrBlockedId(userId, userId);
+                // 푸시 알림을 받던 기기 정보도 지운다
+                pushTokenRepository.deleteByUserId(userId);
         }
 
         // 회원 목록 조회

@@ -22,6 +22,7 @@ import com.pickstage.backend.entity.VenueReview;
 import com.pickstage.backend.global.exception.DuplicateRequestException;
 import com.pickstage.backend.repository.CommentRepository;
 import com.pickstage.backend.repository.PostRepository;
+import com.pickstage.backend.repository.PushTokenRepository;
 import com.pickstage.backend.repository.RefreshTokenRepository;
 import com.pickstage.backend.repository.ReportRepository;
 import com.pickstage.backend.repository.UserRepository;
@@ -42,10 +43,13 @@ public class AdminReportService {
     private final VenueReviewRepository venueReviewRepository;
     private final UserRepository userRepository;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final PushTokenRepository pushTokenRepository;
 
     public AdminReportService(ReportRepository reportRepository, PostRepository postRepository,
             CommentRepository commentRepository, VenueReviewRepository venueReviewRepository,
-            UserRepository userRepository, RefreshTokenRepository refreshTokenRepository) {
+            UserRepository userRepository, RefreshTokenRepository refreshTokenRepository,
+            PushTokenRepository pushTokenRepository) {
+        this.pushTokenRepository = pushTokenRepository;
         this.reportRepository = reportRepository;
         this.postRepository = postRepository;
         this.commentRepository = commentRepository;
@@ -125,6 +129,8 @@ public class AdminReportService {
         userRepository.save(target);
         // 갱신 토큰을 지워서, 이미 로그인해 있던 기기도 곧 로그아웃되게 한다
         refreshTokenRepository.deleteByUserId(targetUserId);
+        // 정지된 계정에는 푸시도 보내지 않는다 (해제 후 앱을 다시 열면 기기가 다시 등록된다)
+        pushTokenRepository.deleteByUserId(targetUserId);
         reportRepository.markHandled(Report.TargetType.USER, targetUserId, Report.Status.PENDING,
                 Report.Status.DELETED, LocalDateTime.now(), adminId);
     }
