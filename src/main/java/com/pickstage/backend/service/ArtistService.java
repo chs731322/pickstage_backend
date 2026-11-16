@@ -34,6 +34,25 @@ public class ArtistService {
     static final int SEARCH_MAX_SIZE = 10;
     // 한 글자 검색(예: "향")도 허용하되, 너무 많이 가져오지 않게 후보 수를 제한한다
     static final int SEARCH_CANDIDATE_LIMIT = 300;
+    // 아티스트 목록에 한 번에 내려주는 최대 인원
+    static final int LIST_MAX_SIZE = 1000;
+
+    // 아티스트 목록 (로그인 없이 조회): 예정된 공연에 출연하는 아티스트를 이름순으로. 앱의 "아티스트" 화면용.
+    public List<ArtistSearchResponse> listUpcomingArtists() {
+        List<Object[]> rows = artistRepository.findWithUpcomingFestivals(
+                LocalDate.now(), org.springframework.data.domain.PageRequest.of(0, LIST_MAX_SIZE));
+
+        return rows.stream()
+                .map(row -> ArtistSearchResponse.builder()
+                        .id((Long) row[0])
+                        .name((String) row[1])
+                        .englishName((String) row[2])
+                        .profileImage((String) row[3])
+                        .upcomingCount(((Number) row[4]).intValue())
+                        .build())
+                .sorted(java.util.Comparator.comparing(a -> a.getName() == null ? "" : a.getName()))
+                .toList();
+    }
 
     public List<ArtistSearchResponse> searchArtists(String keyword, int size) {
         String normalized = keyword == null ? "" : keyword.trim().toLowerCase();

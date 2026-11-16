@@ -47,6 +47,12 @@ public class ArtistController {
         return ResponseEntity.ok(ApiResponse.success(artistService.searchArtists(keyword, size)));
     }
 
+    // 아티스트 목록 (로그인 없이 조회, 예정된 공연에 출연하는 아티스트만 이름순)
+    @GetMapping("/upcoming")
+    public ResponseEntity<ApiResponse<List<ArtistSearchResponse>>> listUpcomingArtists() {
+        return ResponseEntity.ok(ApiResponse.success(artistService.listUpcomingArtists()));
+    }
+
     // 사이트맵용 아티스트 id 목록 (로그인 없이 조회, 출연 공연이 있는 아티스트만)
     @GetMapping("/ids")
     public ResponseEntity<ApiResponse<List<Long>>> getArtistIds() {
