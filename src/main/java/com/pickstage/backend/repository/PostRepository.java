@@ -16,9 +16,11 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     @Query("SELECT p FROM Post p WHERE " +
             "(:category IS NULL OR p.category = :category) AND " +
             "(:festivalId IS NULL OR p.festivalId = :festivalId) AND " +
+            "(:keyword IS NULL OR p.title LIKE %:keyword% OR p.content LIKE %:keyword% OR p.festivalId IN (" +
+            "SELECT f.id FROM Festival f WHERE f.title LIKE %:keyword%)) AND " +
             "p.deletedAt IS NULL AND p.hiddenAt IS NULL AND " +
             "p.userId NOT IN :excludedUserIds")
-    Page<Post> findByFilters(Post.Category category, Long festivalId, Collection<Long> excludedUserIds, Pageable pageable);
+    Page<Post> findByFilters(Post.Category category, Long festivalId, String keyword, Collection<Long> excludedUserIds, Pageable pageable);
 
     // 마이페이지 "내가 쓴 글": 내가 쓴 삭제되지 않은 글 (카테고리로 거를 수 있다)
     @Query("SELECT p FROM Post p WHERE p.userId = :userId AND " +

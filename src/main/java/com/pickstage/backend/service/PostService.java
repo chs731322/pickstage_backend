@@ -77,15 +77,17 @@ public class PostService {
     }
 
     // 게시글 목록 조회 (로그인했다면, 내가 차단한 사용자의 글은 빼고 보여준다)
-    public Page<PostListResponse> getPosts(String category, Long festivalId, Pageable pageable, Long viewerId) {
+    // keyword: 제목·본문·연결된 공연명에 포함된 글자 (비어 있으면 검색하지 않는다)
+    public Page<PostListResponse> getPosts(String category, Long festivalId, String keyword, Pageable pageable, Long viewerId) {
         Post.Category categoryEnum = parseCategory(category);
+        String trimmedKeyword = keyword == null || keyword.isBlank() ? null : keyword.trim();
 
         // NOT IN 에 빈 목록을 넣으면 쿼리가 깨질 수 있어서, 차단한 사람이 없으면 존재하지 않는 id 하나를 넣는다
         Set<Long> blocked = blockService.getBlockedIds(viewerId);
         Collection<Long> excluded = blocked.isEmpty() ? List.of(-1L) : blocked;
 
         Map<Long, User> authors = new HashMap<>();
-        return postRepository.findByFilters(categoryEnum, festivalId, excluded, pageable)
+        return postRepository.findByFilters(categoryEnum, festivalId, trimmedKeyword, excluded, pageable)
                 .map(post -> toListResponse(post, authors));
     }
 

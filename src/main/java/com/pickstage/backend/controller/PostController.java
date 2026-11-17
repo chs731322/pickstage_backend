@@ -41,12 +41,13 @@ public class PostController {
             @AuthenticationPrincipal Long userId,
             @RequestParam(required = false) String category,
             @RequestParam(required = false) Long festivalId,
+            @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "latest") String sort) {
 
         Pageable pageable = PageRequest.of(page, size, postSort(sort));
-        Page<PostListResponse> result = postService.getPosts(category, festivalId, pageable, userId);
+        Page<PostListResponse> result = postService.getPosts(category, festivalId, keyword, pageable, userId);
 
         return ResponseEntity.ok(ApiResponse.success(PageResponse.of(result)));
     }

@@ -109,14 +109,14 @@ class PostServiceBlockingTest {
     void 목록은_차단한_사용자를_빼고_조회한다() {
         Pageable pageable = PageRequest.of(0, 20);
         when(blockService.getBlockedIds(1L)).thenReturn(Set.of(3L, 4L));
-        when(postRepository.findByFilters(any(), any(), any(), eq(pageable))).thenReturn(new PageImpl<>(List.of()));
+        when(postRepository.findByFilters(any(), any(), any(), any(), eq(pageable))).thenReturn(new PageImpl<>(List.of()));
 
-        Page<PostListResponse> result = service.getPosts(null, null, pageable, 1L);
+        Page<PostListResponse> result = service.getPosts(null, null, null, pageable, 1L);
 
         assertEquals(0, result.getTotalElements());
         @SuppressWarnings("unchecked")
         ArgumentCaptor<java.util.Collection<Long>> excluded = ArgumentCaptor.forClass(java.util.Collection.class);
-        verify(postRepository).findByFilters(any(), any(), excluded.capture(), eq(pageable));
+        verify(postRepository).findByFilters(any(), any(), any(), excluded.capture(), eq(pageable));
         assertEquals(Set.of(3L, 4L), Set.copyOf(excluded.getValue()));
     }
 
@@ -124,15 +124,30 @@ class PostServiceBlockingTest {
     void 차단한_사람이_없거나_로그인하지_않아도_제외_목록은_비어있지_않다() {
         Pageable pageable = PageRequest.of(0, 20);
         when(blockService.getBlockedIds(null)).thenReturn(Set.of());
-        when(postRepository.findByFilters(any(), any(), any(), eq(pageable))).thenReturn(new PageImpl<>(List.of()));
+        when(postRepository.findByFilters(any(), any(), any(), any(), eq(pageable))).thenReturn(new PageImpl<>(List.of()));
 
-        service.getPosts(null, null, pageable, null);
+        service.getPosts(null, null, null, pageable, null);
 
         @SuppressWarnings("unchecked")
         ArgumentCaptor<java.util.Collection<Long>> excluded = ArgumentCaptor.forClass(java.util.Collection.class);
-        verify(postRepository).findByFilters(any(), any(), excluded.capture(), eq(pageable));
+        verify(postRepository).findByFilters(any(), any(), any(), excluded.capture(), eq(pageable));
         // 빈 목록을 NOT IN 에 넣으면 쿼리가 깨질 수 있어서 존재하지 않는 id 하나를 넣는다
         assertEquals(List.of(-1L), List.copyOf(excluded.getValue()));
+    }
+
+    @Test
+    void 검색어는_앞뒤_공백을_자르고_공백뿐이면_검색하지_않는다() {
+        Pageable pageable = PageRequest.of(0, 20);
+        when(blockService.getBlockedIds(null)).thenReturn(Set.of());
+        when(postRepository.findByFilters(any(), any(), any(), any(), eq(pageable))).thenReturn(new PageImpl<>(List.of()));
+
+        service.getPosts(null, null, "  동행 ", pageable, null);
+        service.getPosts(null, null, "   ", pageable, null);
+
+        ArgumentCaptor<String> keyword = ArgumentCaptor.forClass(String.class);
+        verify(postRepository, org.mockito.Mockito.times(2)).findByFilters(any(), any(), keyword.capture(), any(), eq(pageable));
+        assertEquals("동행", keyword.getAllValues().get(0));
+        assertEquals(null, keyword.getAllValues().get(1));
     }
 
     @Test
