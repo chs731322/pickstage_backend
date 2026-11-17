@@ -7,6 +7,7 @@ import com.pickstage.backend.entity.Artist;
 import com.pickstage.backend.entity.FestivalArtist;
 import com.pickstage.backend.repository.ArtistRepository;
 import com.pickstage.backend.repository.FestivalArtistRepository;
+import com.pickstage.backend.repository.InterestArtistRepository;
 import org.springframework.stereotype.Service;
 import tools.jackson.databind.ObjectMapper;
 
@@ -19,13 +20,16 @@ public class ArtistService {
 
     private final ArtistRepository artistRepository;
     private final FestivalArtistRepository festivalArtistRepository;
+    private final InterestArtistRepository interestArtistRepository;
     private final ObjectMapper objectMapper;
 
     public ArtistService(ArtistRepository artistRepository,
                           FestivalArtistRepository festivalArtistRepository,
+                          InterestArtistRepository interestArtistRepository,
                           ObjectMapper objectMapper) {
         this.artistRepository = artistRepository;
         this.festivalArtistRepository = festivalArtistRepository;
+        this.interestArtistRepository = interestArtistRepository;
         this.objectMapper = objectMapper;
     }
 
@@ -112,6 +116,7 @@ public class ArtistService {
                 .instagramUrl(artist.getInstagramUrl())
                 .spotifyUrl(artist.getSpotifyUrl())
                 .description(null)
+                .interestCount(interestArtistRepository.countByArtistId(id))
                 .upcomingConcerts(upcomingConcerts)
                 .pastConcerts(pastConcerts)
                 .build();

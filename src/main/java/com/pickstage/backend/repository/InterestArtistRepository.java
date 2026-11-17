@@ -24,6 +24,9 @@ public interface InterestArtistRepository extends JpaRepository<InterestArtist, 
     // 내 관심 아티스트 목록 최신순 조회
     List<InterestArtist> findByUserIdOrderByCreatedAtDesc(Long userId);
 
+    // 아티스트 상세: 이 아티스트를 관심 등록한 회원 수
+    long countByArtistId(Long artistId);
+
     // 관리자 아티스트 목록: 아티스트별 관심 등록 수
     @Query("SELECT ia.artistId, COUNT(ia) FROM InterestArtist ia WHERE ia.artistId IN :artistIds GROUP BY ia.artistId")
     List<Object[]> countByArtistIds(@Param("artistIds") List<Long> artistIds);

@@ -24,6 +24,8 @@ public class ArtistDetailResponse {
     private String instagramUrl;
     private String spotifyUrl;
     private String description;
+    // 이 아티스트를 관심 아티스트로 등록한 회원 수
+    private long interestCount;
     private List<UpcomingConcertInfo> upcomingConcerts;
     // 출연했던(이미 끝난) 공연. 최근 공연이 먼저 온다.
     private List<UpcomingConcertInfo> pastConcerts;
