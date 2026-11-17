@@ -130,7 +130,9 @@ public class FestivalService {
                         default -> Sort.by(Sort.Direction.DESC, "createdAt");
                 };
 
-                Pageable pageable = PageRequest.of(page, size, sorting);
+                // 같은 값(시작일·찜 수 등)이 많아도 페이지를 넘길 때 같은 공연이 두 번 나오거나 빠지지 않도록, 마지막에 id 순서를 더해 순서를 고정한다
+                Sort stableSorting = sorting.and(Sort.by(Sort.Direction.ASC, "id"));
+                Pageable pageable = PageRequest.of(page, size, stableSorting);
 
                 java.time.LocalDate endAfter = upcomingOnly ? java.time.LocalDate.now() : null;
 
