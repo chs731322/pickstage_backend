@@ -180,7 +180,8 @@ src/main/java/com/pickstage/backend/
 git clone https://github.com/chs731322/pickstage_backend.git
 cd pickstage_backend
 
-# src/main/resources/application.properties 를 만들어 아래 값을 채웁니다 (git에는 올라가지 않음)
+# 설정 예시 파일을 복사해서 자기 값으로 채웁니다 (복사본은 git에 올라가지 않음)
+cp src/main/resources/application.properties.example src/main/resources/application.properties
 ./mvnw spring-boot:run        # http://localhost:8080
 ```
 

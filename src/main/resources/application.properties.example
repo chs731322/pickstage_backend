@@ -1,0 +1,76 @@
+# 로컬 실행용 설정 예시입니다.
+# 이 파일을 같은 폴더에 application.properties 로 복사한 뒤 아래 <...> 부분을 자기 값으로 채우세요.
+# application.properties 는 .gitignore 에 들어 있어 git 에 올라가지 않습니다. 실제 값은 절대 이 파일에 적지 마세요.
+# 운영(Railway)에서는 같은 이름의 환경변수로 주입합니다. (예: jwt.secret -> JWT_SECRET)
+# "(선택)" 표시가 있는 값은 비워 두면 해당 기능만 꺼진 채로 서버는 뜹니다.
+
+spring.application.name=pickstage
+
+# ---------- DB (MySQL 8) ----------
+spring.datasource.url=jdbc:mysql://localhost:3306/<DB 이름>?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+spring.datasource.username=<DB 계정>
+spring.datasource.password=<DB 비밀번호>
+spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
+spring.datasource.hikari.maximum-pool-size=5
+spring.datasource.hikari.minimum-idle=1
+server.tomcat.threads.max=20
+
+# 스키마는 코드가 아니라 SQL 파일로 관리합니다 (none)
+spring.jpa.hibernate.ddl-auto=none
+spring.jpa.show-sql=false
+spring.jpa.open-in-view=false
+
+# ---------- JWT ----------
+# 32자 이상의 무작위 문자열. 예) openssl rand -base64 48
+jwt.secret=<무작위 비밀 문자열>
+jwt.access-expiration=1800000
+jwt.refresh-expiration=1209600000
+
+# ---------- 이미지 업로드 (S3) ----------
+aws.s3.bucket=<버킷 이름>
+aws.s3.region=ap-northeast-2
+aws.s3.access-key=<S3 업로드 전용 IAM 키>
+aws.s3.secret-key=<S3 업로드 전용 IAM 시크릿>
+
+# ---------- 프론트·CORS ----------
+app.frontend-url=http://localhost:5173
+cors.allowed-origins=http://localhost:5173
+app.public-base-url=http://localhost:8080
+app.oauth-return-url=pickstage://oauth
+
+# ---------- 메일 (선택) ----------
+# 운영은 Resend, 로컬은 SMTP 중 쓰는 쪽만 채우세요.
+resend.api-key=
+mail.from=
+spring.mail.host=smtp.gmail.com
+spring.mail.port=587
+spring.mail.username=
+spring.mail.password=
+spring.mail.properties.mail.smtp.auth=true
+spring.mail.properties.mail.smtp.starttls.enable=true
+spring.mail.properties.mail.smtp.starttls.required=true
+spring.mail.default-encoding=UTF-8
+spring.mail.properties.mail.smtp.connectiontimeout=5000
+spring.mail.properties.mail.smtp.timeout=5000
+spring.mail.properties.mail.smtp.writetimeout=5000
+app.report-notify-email=
+
+# ---------- 소셜 로그인 (선택) ----------
+kakao.client-id=
+kakao.client-secret=
+kakao.redirect-uri=
+naver.client-id=
+naver.client-secret=
+google.client-id=
+google.client-secret=
+google.redirect-uri=
+apple.client-ids=
+
+# ---------- 외부 API (선택) ----------
+gemini.api-key=
+gemini.model=gemini-3.5-flash-lite
+spotify.client-id=
+spotify.client-secret=
+kopis.api-key=
+kma.api-key=
+expo.access-token=
