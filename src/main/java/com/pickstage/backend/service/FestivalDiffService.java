@@ -29,7 +29,28 @@ public class FestivalDiffService {
 
     // 예매처와 권종 이름을 합쳐 "같은 티켓"인지 구별하는 열쇠를 만든다
     private static String ticketKey(String vendorName, String label) {
-        return ArtistMatchService.normalize(vendorName) + "|" + ArtistMatchService.normalize(label);
+        return vendorKey(vendorName) + "|" + ArtistMatchService.normalize(label);
+    }
+
+    // 같은 예매처를 다르게 적어도 하나로 본다 (NOL / NOL티켓 / 놀티켓 / 인터파크 등)
+    static String vendorKey(String vendorName) {
+        String name = ArtistMatchService.normalize(vendorName);
+        if (name.contains("nol") || name.contains("놀티켓") || name.contains("인터파크") || name.contains("interpark")) {
+            return "nol";
+        }
+        if (name.contains("melon") || name.contains("멜론")) {
+            return "melon";
+        }
+        if (name.contains("yes24") || name.contains("예스24")) {
+            return "yes24";
+        }
+        if (name.contains("naver") || name.contains("네이버")) {
+            return "naver";
+        }
+        if (name.contains("ticketlink") || name.contains("티켓링크")) {
+            return "ticketlink";
+        }
+        return name;
     }
 
     public static List<TicketDraft> newTickets(List<FestivalTicket> current, List<TicketDraft> extracted) {

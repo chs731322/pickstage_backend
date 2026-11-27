@@ -129,6 +129,30 @@ class FestivalUpdateSuggestionServiceTest {
     }
 
     @Test
+    void 예매처_이름이_달라도_같은_곳이면_중복으로_보고_링크는_기존_것으로_채운다() {
+        when(tickets.findByFestivalIdOrderBySortOrderAsc(FESTIVAL)).thenReturn(List.of(
+                FestivalTicket.builder().vendorName("NOL티켓").label("1일권").bookingUrl("https://nol.yanolja.com/ticket/products/1").build()));
+        when(draftService.createDraft(eq(ADMIN), any())).thenReturn(FestivalDraftResponse.builder()
+                .draft(Draft.builder()
+                        .lineup(List.of())
+                        .tickets(List.of(
+                                TicketDraft.builder().vendorName("NOL").label("1일권").build(),
+                                TicketDraft.builder().vendorName("NOL").label("2일권").build(),
+                                TicketDraft.builder().vendorName("YES24").label("1일권").build()))
+                        .build())
+                .artistMatches(List.of())
+                .build());
+
+        List<FestivalUpdateSuggestion> result = created();
+
+        assertEquals(2, result.size());
+        assertEquals("2일권", result.get(0).getLabel());
+        assertEquals("https://nol.yanolja.com/ticket/products/1", result.get(0).getBookingUrl());
+        assertEquals("YES24", result.get(1).getVendorName());
+        assertEquals(null, result.get(1).getBookingUrl());
+    }
+
+    @Test
     void 목록은_공연_이름과_함께_보여준다() {
         when(suggestions.findByStatusOrderByCreatedAtDesc(Status.PENDING)).thenReturn(List.of(
                 FestivalUpdateSuggestion.builder().id(5L).festivalId(FESTIVAL).type(Type.LINEUP).status(Status.PENDING).artistName("새밴드").build()));

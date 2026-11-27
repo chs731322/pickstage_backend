@@ -107,8 +107,10 @@ public class FestivalUpdateSuggestionService {
                 suggestions.add(lineupSuggestion(festivalId, artist, dates.get(key)));
             }
         }
+        // 공지에는 보통 링크가 없어서, 이 공연에 이미 등록된 같은 예매처의 링크로 채운다
+        Map<String, String> links = bookingLinks(festival, known);
         for (TicketDraft ticket : FestivalDiffService.newTickets(known, found.getDraft().getTickets())) {
-            suggestions.add(ticketSuggestion(festivalId, ticket));
+            suggestions.add(ticketSuggestion(festivalId, withBookingUrl(ticket, links)));
         }
 
         suggestionRepository.saveAll(suggestions);
@@ -176,6 +178,37 @@ public class FestivalUpdateSuggestionService {
                 .bookingUrl(ticket.getBookingUrl())
                 .openAt(ticket.getOpenAt())
                 .createdAt(LocalDateTime.now())
+                .build();
+    }
+
+    // 예매처별 예매 링크: 등록된 티켓의 링크, 그리고 공연의 대표 예매 링크
+    private static Map<String, String> bookingLinks(Festival festival, List<FestivalTicket> known) {
+        Map<String, String> links = new HashMap<>();
+        for (FestivalTicket ticket : known) {
+            if (ticket.getBookingUrl() != null && !ticket.getBookingUrl().isBlank()) {
+                links.putIfAbsent(FestivalDiffService.vendorKey(ticket.getVendorName()), ticket.getBookingUrl());
+            }
+        }
+        String main = festival.getBookingUrl();
+        if (main != null && !main.isBlank()) {
+            String vendor = TicketPageService.vendorNameOf(main);
+            if (vendor != null) {
+                links.putIfAbsent(FestivalDiffService.vendorKey(vendor), main);
+            }
+        }
+        return links;
+    }
+
+    private static TicketDraft withBookingUrl(TicketDraft ticket, Map<String, String> links) {
+        if (ticket.getBookingUrl() != null && !ticket.getBookingUrl().isBlank()) {
+            return ticket;
+        }
+        return TicketDraft.builder()
+                .label(ticket.getLabel())
+                .vendorName(ticket.getVendorName())
+                .price(ticket.getPrice())
+                .bookingUrl(links.get(FestivalDiffService.vendorKey(ticket.getVendorName())))
+                .openAt(ticket.getOpenAt())
                 .build();
     }
 
