@@ -44,6 +44,9 @@ public interface FestivalRepository extends JpaRepository<Festival, Long> {
         // 공연 당일 알림용: 오늘 시작하는 공연
         List<Festival> findByStartDate(LocalDate startDate);
 
+        // 정보 갱신 자동 확인용: 아직 끝나지 않은 공연
+        List<Festival> findByEndDateGreaterThanEqual(LocalDate today);
+
         // 해당 공연장에서 예정된 페스티벌
         List<Festival> findByVenueIdAndStartDateGreaterThanEqual(Long venueId, LocalDate today);
 

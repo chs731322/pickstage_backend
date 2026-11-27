@@ -153,6 +153,39 @@ class FestivalUpdateSuggestionServiceTest {
     }
 
     @Test
+    void 묶인_이름은_모두_있는_아티스트일_때만_나눈다() {
+        when(artists.find("타이거JK")).thenReturn(Optional.of(Artist.builder().id(11L).name("타이거JK").build()));
+        when(artists.find("윤미래")).thenReturn(Optional.of(Artist.builder().id(12L).name("윤미래").build()));
+        when(artists.find("모르는팀")).thenReturn(Optional.empty());
+        when(draftService.createDraft(eq(ADMIN), any())).thenReturn(FestivalDraftResponse.builder()
+                .draft(Draft.builder()
+                        .lineup(List.of(new LineupRequest("타이거JK + 윤미래", DAY)))
+                        .tickets(List.of())
+                        .build())
+                .artistMatches(List.of(
+                        ArtistMatch.builder().name("타이거JK + 윤미래").newArtist(true).build(),
+                        ArtistMatch.builder().name("윤미래 & 모르는팀").newArtist(true).build()))
+                .build());
+
+        List<FestivalUpdateSuggestion> result = created();
+
+        assertEquals(List.of("타이거JK", "윤미래", "윤미래 & 모르는팀"), result.stream().map(FestivalUpdateSuggestion::getArtistName).toList());
+        assertEquals(11L, result.get(0).getArtistId());
+        assertEquals(DAY, result.get(1).getPerformanceDate());
+    }
+
+    @Test
+    void 자동_확인은_아직_없는_예매처의_티켓만_제안한다() {
+        var result = service.addFromSource(festival(), List.of(), List.of(
+                TicketDraft.builder().vendorName("멜론티켓").label("전석").bookingUrl("https://ticket.melon.com/1").build(),
+                TicketDraft.builder().vendorName("예스24").label("전석").price(99000).bookingUrl("https://ticket.yes24.com/2").build()));
+
+        assertEquals(1, result.size());
+        assertEquals("예스24", result.get(0).getVendorName());
+        assertEquals("https://ticket.yes24.com/2", result.get(0).getBookingUrl());
+    }
+
+    @Test
     void 목록은_공연_이름과_함께_보여준다() {
         when(suggestions.findByStatusOrderByCreatedAtDesc(Status.PENDING)).thenReturn(List.of(
                 FestivalUpdateSuggestion.builder().id(5L).festivalId(FESTIVAL).type(Type.LINEUP).status(Status.PENDING).artistName("새밴드").build()));

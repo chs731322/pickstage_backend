@@ -32,6 +32,12 @@ public class FestivalDiffService {
         return vendorKey(vendorName) + "|" + ArtistMatchService.normalize(label);
     }
 
+    private static final Set<String> TICKET_VENDORS = Set.of("nol", "melon", "yes24", "naver", "ticketlink");
+
+    static boolean isTicketVendor(String vendorName) {
+        return TICKET_VENDORS.contains(vendorKey(vendorName));
+    }
+
     // 같은 예매처를 다르게 적어도 하나로 본다 (NOL / NOL티켓 / 놀티켓 / 인터파크 등)
     static String vendorKey(String vendorName) {
         String name = ArtistMatchService.normalize(vendorName);

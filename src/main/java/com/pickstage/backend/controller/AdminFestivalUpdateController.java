@@ -16,6 +16,7 @@ import com.pickstage.backend.dto.FestivalDraftRequest;
 import com.pickstage.backend.dto.FestivalUpdateSuggestionResponse;
 import com.pickstage.backend.entity.FestivalUpdateSuggestion;
 import com.pickstage.backend.global.response.ApiResponse;
+import com.pickstage.backend.service.FestivalUpdateScanner;
 import com.pickstage.backend.service.FestivalUpdateSuggestionService;
 
 // 관리자: 공연 정보 갱신 제안 (공지 붙여넣기 -> 새로 생긴 것만 제안 -> 승인하면 반영)
@@ -25,8 +26,22 @@ public class AdminFestivalUpdateController {
 
     private final FestivalUpdateSuggestionService suggestionService;
 
-    public AdminFestivalUpdateController(FestivalUpdateSuggestionService suggestionService) {
+    private final FestivalUpdateScanner scanner;
+
+    public AdminFestivalUpdateController(FestivalUpdateSuggestionService suggestionService, FestivalUpdateScanner scanner) {
         this.suggestionService = suggestionService;
+        this.scanner = scanner;
+    }
+
+    // 자동 확인(KOPIS)을 지금 시작한다. 오래 걸려서 바로 돌아오고, 진행 상황은 아래 GET 으로 본다.
+    @PostMapping("/update-suggestions/scan")
+    public ResponseEntity<ApiResponse<FestivalUpdateScanner.Status>> startScan(@AuthenticationPrincipal Long userId) {
+        return ResponseEntity.ok(ApiResponse.success(scanner.startByAdmin(userId)));
+    }
+
+    @GetMapping("/update-suggestions/scan")
+    public ResponseEntity<ApiResponse<FestivalUpdateScanner.Status>> getScanStatus(@AuthenticationPrincipal Long userId) {
+        return ResponseEntity.ok(ApiResponse.success(scanner.getStatus(userId)));
     }
 
     @PostMapping("/festivals/{festivalId}/update-suggestions")

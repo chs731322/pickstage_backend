@@ -175,6 +175,27 @@ public class PushService {
         }
     }
 
+    // 알림 목록에는 남기지 않는 운영용 푸시 (관리자에게 알려주기 등). 푸시를 켠 기기에만 간다.
+    public void sendToUsers(Collection<Long> userIds, String title, String body, Map<String, Object> data) {
+        if (userIds == null || userIds.isEmpty()) {
+            return;
+        }
+        List<Long> ids = List.copyOf(userIds);
+        executor.execute(() -> {
+            try {
+                List<Map<String, Object>> messages = new ArrayList<>();
+                List<String> recipients = new ArrayList<>();
+                for (PushToken token : pushTokenRepository.findByUserIdInAndEnabledTrue(ids)) {
+                    messages.add(buildMessage(token.getToken(), title, body, data, null));
+                    recipients.add(token.getToken());
+                }
+                deliver(messages, recipients);
+            } catch (Exception e) {
+                log.warn("푸시를 보내지 못했습니다: {}", e.getClass().getSimpleName());
+            }
+        });
+    }
+
     // 알림들을 받는 사람의 (푸시를 켠) 모든 기기로 보낸다. 여러 사람 것을 모아서 100개씩 나눠 보낸다.
     void push(Collection<Notification> notifications) {
         Set<Long> userIds = notifications.stream().map(Notification::getUserId).collect(Collectors.toCollection(LinkedHashSet::new));

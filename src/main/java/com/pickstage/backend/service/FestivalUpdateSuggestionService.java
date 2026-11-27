@@ -8,6 +8,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.springframework.security.access.AccessDeniedException;
@@ -38,6 +39,9 @@ import com.pickstage.backend.service.FestivalDiffService.ArtistCandidate;
 @Service
 public class FestivalUpdateSuggestionService {
 
+    // 함께 서는 표시: + & × ✕, 앞뒤를 띄운 x
+    private static final Pattern COLLABORATION = Pattern.compile("\\s*[+＋&＆×✕✖]\\s*|\\s+[xX]\\s+");
+
     private final FestivalUpdateSuggestionRepository suggestionRepository;
     private final FestivalRepository festivalRepository;
     private final FestivalArtistRepository festivalArtistRepository;
@@ -67,23 +71,10 @@ public class FestivalUpdateSuggestionService {
         FestivalDraftResponse found = festivalDraftService.createDraft(adminId,
                 withTitle(request, festival.getTitle()));
 
-        Set<Long> currentArtistIds = festivalArtistRepository.findByFestivalId(festivalId).stream()
-                .map(link -> link.getArtist().getId())
-                .collect(Collectors.toSet());
-
-        List<FestivalUpdateSuggestion> already = suggestionRepository.findByFestivalIdAndStatusIn(festivalId,
-                List.of(Status.PENDING, Status.REJECTED));
-
-        // 새 아티스트: 라인업에 없고, 이미 제안했던 이름도 아닌 것
+        // 새 아티스트: 공지의 라인업과 출연 날짜
         List<ArtistCandidate> candidates = found.getArtistMatches().stream()
                 .map(match -> new ArtistCandidate(match.getName(), match.getArtistId()))
                 .toList();
-        Set<String> suggestedNames = new HashSet<>();
-        for (FestivalUpdateSuggestion s : already) {
-            if (s.getType() == Type.LINEUP) {
-                suggestedNames.add(ArtistMatchService.normalize(s.getArtistName()));
-            }
-        }
         Map<String, LocalDate> dates = new HashMap<>();
         for (LineupRequest entry : found.getDraft().getLineup()) {
             if (entry.getPerformanceDate() != null) {
@@ -91,9 +82,48 @@ public class FestivalUpdateSuggestionService {
             }
         }
 
+        return saveNew(festival, candidates, dates, found.getDraft().getTickets()).stream()
+                .map(s -> FestivalUpdateSuggestionResponse.of(s, festival.getTitle()))
+                .toList();
+    }
+
+    // 자동 확인(KOPIS)에서 찾은 것을 제안으로 저장한다.
+    // 가격 이름은 출처마다 달라서("전석"과 "일반" 등), 티켓은 아직 없는 예매처의 것만 제안한다.
+    public List<FestivalUpdateSuggestion> addFromSource(Festival festival, List<String> artistNames, List<TicketDraft> tickets) {
+        List<ArtistCandidate> candidates = artistNames.stream()
+                .map(name -> new ArtistCandidate(name, artistMatchService.find(name).map(Artist::getId).orElse(null)))
+                .toList();
+
+        List<FestivalTicket> current = festivalTicketRepository.findByFestivalIdOrderBySortOrderAsc(festival.getId());
+        Set<String> vendors = new HashSet<>(bookingLinks(festival, current).keySet());
+        current.forEach(ticket -> vendors.add(FestivalDiffService.vendorKey(ticket.getVendorName())));
+        List<TicketDraft> newVendorTickets = tickets.stream()
+                .filter(ticket -> !vendors.contains(FestivalDiffService.vendorKey(ticket.getVendorName())))
+                .toList();
+
+        return saveNew(festival, candidates, new HashMap<>(), newVendorTickets);
+    }
+
+    // 이미 있는 것과 이미 제안했던 것을 빼고 대기 제안으로 저장한다
+    private List<FestivalUpdateSuggestion> saveNew(Festival festival, List<ArtistCandidate> candidates,
+            Map<String, LocalDate> dates, List<TicketDraft> tickets) {
+        Long festivalId = festival.getId();
+        Set<Long> currentArtistIds = festivalArtistRepository.findByFestivalId(festivalId).stream()
+                .map(link -> link.getArtist().getId())
+                .collect(Collectors.toSet());
+
+        List<FestivalUpdateSuggestion> already = suggestionRepository.findByFestivalIdAndStatusIn(festivalId,
+                List.of(Status.PENDING, Status.REJECTED));
+
+        Set<String> suggestedNames = new HashSet<>();
+        for (FestivalUpdateSuggestion s : already) {
+            if (s.getType() == Type.LINEUP) {
+                suggestedNames.add(ArtistMatchService.normalize(s.getArtistName()));
+            }
+        }
+
         // 새 티켓: 등록된 티켓 + 이미 제안했던 티켓과 비교
-        List<FestivalTicket> known = new ArrayList<>(
-                festivalTicketRepository.findByFestivalIdOrderBySortOrderAsc(festivalId));
+        List<FestivalTicket> known = new ArrayList<>(festivalTicketRepository.findByFestivalIdOrderBySortOrderAsc(festivalId));
         for (FestivalUpdateSuggestion s : already) {
             if (s.getType() == Type.TICKET) {
                 known.add(FestivalTicket.builder().vendorName(s.getVendorName()).label(s.getLabel()).build());
@@ -101,7 +131,7 @@ public class FestivalUpdateSuggestionService {
         }
 
         List<FestivalUpdateSuggestion> suggestions = new ArrayList<>();
-        for (ArtistCandidate artist : FestivalDiffService.newArtists(currentArtistIds, candidates)) {
+        for (ArtistCandidate artist : FestivalDiffService.newArtists(currentArtistIds, splitCollaborations(candidates, dates))) {
             String key = ArtistMatchService.normalize(artist.name());
             if (!suggestedNames.contains(key)) {
                 suggestions.add(lineupSuggestion(festivalId, artist, dates.get(key)));
@@ -109,14 +139,36 @@ public class FestivalUpdateSuggestionService {
         }
         // 공지에는 보통 링크가 없어서, 이 공연에 이미 등록된 같은 예매처의 링크로 채운다
         Map<String, String> links = bookingLinks(festival, known);
-        for (TicketDraft ticket : FestivalDiffService.newTickets(known, found.getDraft().getTickets())) {
+        for (TicketDraft ticket : FestivalDiffService.newTickets(known, tickets)) {
             suggestions.add(ticketSuggestion(festivalId, withBookingUrl(ticket, links)));
         }
 
         suggestionRepository.saveAll(suggestions);
-        return suggestions.stream()
-                .map(s -> FestivalUpdateSuggestionResponse.of(s, festival.getTitle()))
-                .toList();
+        return suggestions;
+    }
+
+    // "타이거JK + 윤미래"처럼 묶인 이름은, 그 이름의 아티스트가 없고 나눈 이름이 모두 이미 있을 때만 한 명씩으로 바꾼다.
+    // (하나라도 없으면 팀 이름일 수 있어서 그대로 두고 관리자가 판단한다)
+    private List<ArtistCandidate> splitCollaborations(List<ArtistCandidate> candidates, Map<String, LocalDate> dates) {
+        List<ArtistCandidate> result = new ArrayList<>();
+        for (ArtistCandidate candidate : candidates) {
+            String[] parts = candidate.artistId() == null ? COLLABORATION.split(candidate.name().trim()) : new String[0];
+            List<ArtistCandidate> split = new ArrayList<>();
+            for (String part : parts.length > 1 ? parts : new String[0]) {
+                artistMatchService.find(part)
+                        .ifPresent(artist -> split.add(new ArtistCandidate(artist.getName(), artist.getId())));
+            }
+            if (parts.length > 1 && split.size() == parts.length) {
+                LocalDate date = dates.get(ArtistMatchService.normalize(candidate.name()));
+                if (date != null) {
+                    split.forEach(artist -> dates.putIfAbsent(ArtistMatchService.normalize(artist.name()), date));
+                }
+                result.addAll(split);
+            } else {
+                result.add(candidate);
+            }
+        }
+        return result;
     }
 
     public List<FestivalUpdateSuggestionResponse> getSuggestions(Long adminId, Status status) {

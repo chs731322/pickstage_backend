@@ -7,12 +7,13 @@ import static org.mockito.Mockito.verify;
 
 import org.junit.jupiter.api.Test;
 
+import com.pickstage.backend.service.FestivalUpdateScanner;
 import com.pickstage.backend.service.FestivalUpdateSuggestionService;
 
 class AdminFestivalUpdateControllerTest {
 
     private final FestivalUpdateSuggestionService service = mock(FestivalUpdateSuggestionService.class);
-    private final AdminFestivalUpdateController controller = new AdminFestivalUpdateController(service);
+    private final AdminFestivalUpdateController controller = new AdminFestivalUpdateController(service, mock(FestivalUpdateScanner.class));
 
     @Test
     void 승인_API는_승인만_한다() {
