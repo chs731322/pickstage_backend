@@ -93,6 +93,18 @@ public class FestivalDraftService {
 
         // 붙여넣은 글에 예매처 주소가 있으면 그 페이지의 권종·가격·오픈 일정도 읽어서 함께 넘긴다
         List<TicketPageService.TicketPage> ticketPages = hasText ? ticketPageService.fetchAll(request.getText()) : List.of();
+        return build(request, ticketPages);
+    }
+
+    // 자동 확인용: 이미 읽어 온 예매 페이지 하나로 초안을 만든다 (관리자 요청이 아니라 예약 작업에서 부른다)
+    @Transactional(readOnly = true)
+    public FestivalDraftResponse createDraftFromPage(String title, TicketPageService.TicketPage page) {
+        return build(new FestivalDraftRequest("공연명: " + title + "\n" + page.getUrl(), null, null), List.of(page));
+    }
+
+    private FestivalDraftResponse build(FestivalDraftRequest request, List<TicketPageService.TicketPage> ticketPages) {
+        boolean hasText = request.getText() != null && !request.getText().isBlank();
+        boolean hasImage = request.getImageBase64() != null && !request.getImageBase64().isBlank();
 
         String json = geminiService.generateJson(
                 buildPrompt(hasText ? request.getText() : null, hasImage, ticketPages),

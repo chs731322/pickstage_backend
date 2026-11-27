@@ -6,6 +6,7 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -25,8 +26,11 @@ import com.pickstage.backend.entity.User;
 import com.pickstage.backend.repository.FestivalRepository;
 import com.pickstage.backend.repository.UserRepository;
 
-// 하루 한 번 예정 공연을 KOPIS에서 확인해, 새 출연진과 새 예매처가 있으면 제안으로 쌓고 관리자에게 알린다.
+// 하루 한 번 예정 공연을 확인해, 새 출연진·티켓·예매처가 있으면 제안으로 쌓고 관리자에게 알린다.
 // 공연에 바로 반영하지 않는다 (관리자 승인 필요).
+// - 멜론티켓 링크가 있는 공연: 환경 변수 APP_MELON_SCAN_ENABLED=true 일 때 그 예매 페이지를 읽는다.
+//   (멜론티켓 약관은 허락 없는 자동 수집을 금지하므로, 허락을 받은 동안에만 켠다)
+// - 그 밖의 공연: KOPIS 공식 API
 @Component
 public class FestivalUpdateScanner {
 
@@ -36,12 +40,21 @@ public class FestivalUpdateScanner {
 
     // 마지막 확인 결과 (서버가 재시작되면 지워진다)
     public record Status(boolean configured, boolean running, LocalDateTime finishedAt,
-            int checked, int matched, int created, int failed) {
+            int checked, int matched, int created, int failed, boolean melonEnabled, int melonChecked) {
     }
+
+    // 예매 페이지와 AI를 몰아서 부르지 않도록 쉬는 시간
+    private static final long MELON_PAUSE_MULTIPLIER = 25;
 
     private final FestivalRepository festivalRepository;
     private final UserRepository userRepository;
     private final KopisPerformanceService kopis;
+    private final TicketPageService ticketPageService;
+    private final FestivalDraftService draftService;
+    private final boolean melonEnabled;
+    // 지난번에 읽은 페이지 내용 (같으면 AI를 다시 부르지 않는다. 서버가 재시작되면 지워진다)
+    private final Map<Long, Integer> lastPages = new ConcurrentHashMap<>();
+    private volatile int melonChecked;
     private final FestivalUpdateSuggestionService suggestionService;
     private final EmailService emailService;
     private final ReportNotifier reportNotifier;
@@ -60,17 +73,22 @@ public class FestivalUpdateScanner {
     @Autowired
     public FestivalUpdateScanner(FestivalRepository festivalRepository, UserRepository userRepository,
             KopisPerformanceService kopis, FestivalUpdateSuggestionService suggestionService, EmailService emailService,
-            ReportNotifier reportNotifier, PushService pushService,
+            ReportNotifier reportNotifier, PushService pushService, TicketPageService ticketPageService,
+            FestivalDraftService draftService, @Value("${APP_MELON_SCAN_ENABLED:false}") boolean melonEnabled,
             @Value("${app.frontend-url:http://localhost:5173}") String frontendUrl) {
         this(festivalRepository, userRepository, kopis, suggestionService, emailService, reportNotifier, pushService,
-                frontendUrl, ForkJoinPool.commonPool(), 200);
+                ticketPageService, draftService, melonEnabled, frontendUrl, ForkJoinPool.commonPool(), 200);
     }
 
     // 테스트에서 바로 실행하고 쉬지 않도록 바꿀 때 쓴다
     FestivalUpdateScanner(FestivalRepository festivalRepository, UserRepository userRepository,
             KopisPerformanceService kopis, FestivalUpdateSuggestionService suggestionService, EmailService emailService,
-            ReportNotifier reportNotifier, PushService pushService, String frontendUrl, Executor executor,
+            ReportNotifier reportNotifier, PushService pushService, TicketPageService ticketPageService,
+            FestivalDraftService draftService, boolean melonEnabled, String frontendUrl, Executor executor,
             long pauseMillis) {
+        this.ticketPageService = ticketPageService;
+        this.draftService = draftService;
+        this.melonEnabled = melonEnabled;
         this.festivalRepository = festivalRepository;
         this.userRepository = userRepository;
         this.kopis = kopis;
@@ -102,12 +120,13 @@ public class FestivalUpdateScanner {
     }
 
     private Status status() {
-        return new Status(kopis.isConfigured(), running.get(), finishedAt, checked, matched, created, failed);
+        return new Status(kopis.isConfigured() || melonEnabled, running.get(), finishedAt, checked, matched, created, failed,
+                melonEnabled, melonChecked);
     }
 
     // 이미 확인 중이면 아무것도 하지 않는다
     private void start() {
-        if (!kopis.isConfigured() || !running.compareAndSet(false, true)) {
+        if (!(kopis.isConfigured() || melonEnabled) || !running.compareAndSet(false, true)) {
             return;
         }
         executor.execute(() -> {
@@ -127,19 +146,15 @@ public class FestivalUpdateScanner {
         matched = 0;
         created = 0;
         failed = 0;
+        melonChecked = 0;
         List<String> lines = new ArrayList<>();
         for (Festival festival : festivalRepository.findByEndDateGreaterThanEqual(LocalDate.now(KOREA))) {
             try {
                 checked++;
-                var found = kopis.find(festival.getTitle(), festival.getStartDate(), festival.getEndDate());
-                if (found.isPresent()) {
-                    matched++;
-                    List<FestivalUpdateSuggestion> added = suggestionService.addFromSource(
-                            festival, found.get().cast(), toTickets(found.get()));
-                    created += added.size();
-                    added.forEach(s -> lines.add(describe(festival, s)));
-                }
-                pause();
+                String melonUrl = melonEnabled ? melonUrlOf(festival) : null;
+                List<FestivalUpdateSuggestion> added = melonUrl != null ? checkMelon(festival, melonUrl) : checkKopis(festival);
+                created += added.size();
+                added.forEach(s -> lines.add(describe(festival, s)));
             } catch (Exception e) {
                 failed++;
                 log.warn("공연 {} 확인에 실패했어요: {}", festival.getId(), e.getClass().getSimpleName());
@@ -149,6 +164,41 @@ public class FestivalUpdateScanner {
         if (!lines.isEmpty()) {
             notifyAdmins(lines);
         }
+    }
+
+    private static String melonUrlOf(Festival festival) {
+        String url = festival.getBookingUrl();
+        return url != null && url.startsWith("https://ticket.melon.com/") ? url.trim() : null;
+    }
+
+    // 멜론 예매 페이지를 읽고, 지난번과 달라졌을 때만 AI로 정리해 새 것을 제안한다
+    private List<FestivalUpdateSuggestion> checkMelon(Festival festival, String url) {
+        List<TicketPageService.TicketPage> pages = ticketPageService.fetchAll(url);
+        pause(MELON_PAUSE_MULTIPLIER);
+        if (pages.isEmpty()) {
+            return List.of();
+        }
+        matched++;
+        melonChecked++;
+        TicketPageService.TicketPage page = pages.get(0);
+        Integer hash = page.getText().hashCode();
+        if (hash.equals(lastPages.get(festival.getId()))) {
+            return List.of();
+        }
+        List<FestivalUpdateSuggestion> added = suggestionService.addFromMelonPage(
+                festival, draftService.createDraftFromPage(festival.getTitle(), page));
+        lastPages.put(festival.getId(), hash);
+        return added;
+    }
+
+    private List<FestivalUpdateSuggestion> checkKopis(Festival festival) {
+        var found = kopis.find(festival.getTitle(), festival.getStartDate(), festival.getEndDate());
+        pause(1);
+        if (found.isEmpty()) {
+            return List.of();
+        }
+        matched++;
+        return suggestionService.addFromSource(festival, found.get().cast(), toTickets(found.get()));
     }
 
     // 예매처 링크마다 KOPIS의 가격표를 붙여 티켓 후보를 만든다 (가격표가 없으면 '일반' 하나)
@@ -185,12 +235,12 @@ public class FestivalUpdateScanner {
 
     private void notifyAdmins(List<String> lines) {
         String subject = "[PickStage] 새 공연 정보 제안 " + lines.size() + "건";
-        StringBuilder body = new StringBuilder("KOPIS에서 새로 확인한 정보예요. 승인해야 공연에 반영돼요.\n\n");
+        StringBuilder body = new StringBuilder("자동 확인에서 새로 찾은 정보예요. 승인해야 공연에 반영돼요.\n\n");
         lines.stream().limit(MAX_MAIL_LINES).forEach(line -> body.append("- ").append(line).append('\n'));
         if (lines.size() > MAX_MAIL_LINES) {
             body.append("외 ").append(lines.size() - MAX_MAIL_LINES).append("건\n");
         }
-        body.append("\n관리자 페이지 > 정보 갱신에서 확인해주세요.\n").append(frontendUrl).append("/admin\n출처: KOPIS(공연예술통합전산망)");
+        body.append("\n관리자 페이지 > 정보 갱신에서 확인해주세요.\n").append(frontendUrl).append("/admin\n출처: 멜론티켓 예매 페이지, KOPIS(공연예술통합전산망)");
 
         for (String to : reportNotifier.recipients()) {
             try {
@@ -208,12 +258,12 @@ public class FestivalUpdateScanner {
         }
     }
 
-    private void pause() {
+    private void pause(long times) {
         if (pauseMillis <= 0) {
             return;
         }
         try {
-            Thread.sleep(pauseMillis);
+            Thread.sleep(pauseMillis * times);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }

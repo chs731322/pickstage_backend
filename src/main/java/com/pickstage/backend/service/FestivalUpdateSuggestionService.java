@@ -71,6 +71,20 @@ public class FestivalUpdateSuggestionService {
         FestivalDraftResponse found = festivalDraftService.createDraft(adminId,
                 withTitle(request, festival.getTitle()));
 
+        return saveFromDraft(festival, found, found.getDraft().getTickets()).stream()
+                .map(s -> FestivalUpdateSuggestionResponse.of(s, festival.getTitle()))
+                .toList();
+    }
+
+    // 멜론 예매 페이지를 읽은 결과를 제안으로 저장한다. 그 페이지의 것이므로 멜론 티켓만 담는다.
+    public List<FestivalUpdateSuggestion> addFromMelonPage(Festival festival, FestivalDraftResponse found) {
+        List<TicketDraft> melonOnly = found.getDraft().getTickets().stream()
+                .filter(ticket -> FestivalDiffService.vendorKey(ticket.getVendorName()).equals("melon"))
+                .toList();
+        return saveFromDraft(festival, found, melonOnly);
+    }
+
+    private List<FestivalUpdateSuggestion> saveFromDraft(Festival festival, FestivalDraftResponse found, List<TicketDraft> tickets) {
         // 새 아티스트: 공지의 라인업과 출연 날짜
         List<ArtistCandidate> candidates = found.getArtistMatches().stream()
                 .map(match -> new ArtistCandidate(match.getName(), match.getArtistId()))
@@ -82,9 +96,7 @@ public class FestivalUpdateSuggestionService {
             }
         }
 
-        return saveNew(festival, candidates, dates, found.getDraft().getTickets()).stream()
-                .map(s -> FestivalUpdateSuggestionResponse.of(s, festival.getTitle()))
-                .toList();
+        return saveNew(festival, candidates, dates, tickets);
     }
 
     // 자동 확인(KOPIS)에서 찾은 것을 제안으로 저장한다.
