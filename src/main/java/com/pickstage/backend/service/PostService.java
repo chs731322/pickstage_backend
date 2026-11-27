@@ -57,14 +57,14 @@ public class PostService {
     private final CommentRepository commentRepository;
     private final PostImageRepository postImageRepository;
     private final PostLikeRepository postLikeRepository;
-    private final PostViewGuard postViewGuard;
+    private final ViewGuard viewGuard;
     private final BlockService blockService;
     private final ProfanityFilter profanityFilter;
 
     public PostService(PostRepository postRepository, FestivalRepository festivalRepository,
             UserRepository userRepository, CommentRepository commentRepository,
             PostImageRepository postImageRepository, PostLikeRepository postLikeRepository,
-            PostViewGuard postViewGuard, BlockService blockService, ProfanityFilter profanityFilter) {
+            ViewGuard viewGuard, BlockService blockService, ProfanityFilter profanityFilter) {
         this.blockService = blockService;
         this.profanityFilter = profanityFilter;
         this.postRepository = postRepository;
@@ -72,7 +72,7 @@ public class PostService {
         this.userRepository = userRepository;
         this.commentRepository = commentRepository;
         this.postImageRepository = postImageRepository;
-        this.postViewGuard = postViewGuard;
+        this.viewGuard = viewGuard;
         this.postLikeRepository = postLikeRepository;
     }
 
@@ -147,7 +147,7 @@ public class PostService {
 
         // 글쓴이 본인의 조회와 같은 조회자의 반복 조회(새로고침, 좋아요·댓글 뒤 재조회)는 조회수에 더하지 않는다
         boolean isAuthor = userId != null && userId.equals(post.getUserId());
-        if (!isAuthor && postViewGuard.shouldCount(postId, viewerKey)) {
+        if (!isAuthor && viewGuard.shouldCount(ViewGuard.Target.POST, postId, viewerKey)) {
             post.setViewCount(post.getViewCount() + 1);
             postRepository.save(post);
         }

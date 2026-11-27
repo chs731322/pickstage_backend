@@ -57,6 +57,7 @@ public class FestivalService {
         private final PostRepository postRepository;
         private final ArtistMatchService artistMatchService;
         private final KopisVenueService kopisVenueService;
+        private final ViewGuard viewGuard;
 
         public FestivalService(FestivalRepository festivalRepository,
                         FestivalImageRepository festivalImageRepository,
@@ -68,7 +69,9 @@ public class FestivalService {
                         NotificationRepository notificationRepository,
                         PostRepository postRepository,
                         ArtistMatchService artistMatchService,
-                        KopisVenueService kopisVenueService) {
+                        KopisVenueService kopisVenueService,
+                        ViewGuard viewGuard) {
+                this.viewGuard = viewGuard;
                 this.festivalRepository = festivalRepository;
                 this.festivalImageRepository = festivalImageRepository;
                 this.festivalArtistRepository = festivalArtistRepository;
@@ -179,12 +182,15 @@ public class FestivalService {
 
         // 공연 상세 조회
         @Transactional
-        public FestivalDetailResponse getFestival(Long id) {
+        public FestivalDetailResponse getFestival(Long id, String viewerKey) {
 
                 Festival festival = festivalRepository.findById(id)
                                 .orElseThrow(() -> new IllegalStateException("존재하지 않는 공연입니다."));
 
-                festival.incrementViewCount();
+                // 같은 조회자의 반복 조회(새로고침 등)와 검색 로봇은 조회수에 더하지 않는다 (조회수는 인기순에 쓰인다)
+                if (viewGuard.shouldCount(ViewGuard.Target.FESTIVAL, id, viewerKey)) {
+                        festival.incrementViewCount();
+                }
 
                 List<String> images = festivalImageRepository.findByFestivalIdOrderBySortOrderAsc(id)
                                 .stream()

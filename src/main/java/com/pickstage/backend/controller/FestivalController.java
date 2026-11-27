@@ -6,10 +6,13 @@ import com.pickstage.backend.dto.FestivalListResponse;
 import com.pickstage.backend.dto.PageResponse;
 import com.pickstage.backend.dto.RecommendationResponse;
 import com.pickstage.backend.global.response.ApiResponse;
+import com.pickstage.backend.global.util.ViewerKeys;
 import com.pickstage.backend.service.FestivalService;
 import com.pickstage.backend.service.RecommendationService;
 
 import java.util.List;
+
+import jakarta.servlet.http.HttpServletRequest;
 
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
@@ -46,9 +49,10 @@ public class FestivalController {
 
     // 공연 상세 조회
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<FestivalDetailResponse>> getFestival(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<FestivalDetailResponse>> getFestival(
+            @AuthenticationPrincipal Long userId, @PathVariable Long id, HttpServletRequest request) {
 
-        FestivalDetailResponse result = festivalService.getFestival(id);
+        FestivalDetailResponse result = festivalService.getFestival(id, ViewerKeys.of(userId, request));
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 

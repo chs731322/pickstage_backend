@@ -48,7 +48,7 @@ class PostServiceBlockingTest {
         blockService = mock(BlockService.class);
         service = new PostService(postRepository, mock(FestivalRepository.class), mock(UserRepository.class),
                 commentRepository, mock(PostImageRepository.class), mock(PostLikeRepository.class),
-                mock(PostViewGuard.class), blockService, new ProfanityFilter());
+                mock(ViewGuard.class), blockService, new ProfanityFilter());
     }
 
     private Post post(Long id, Long authorId) {

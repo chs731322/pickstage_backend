@@ -43,7 +43,7 @@ class FestivalServiceListSortTest {
         service = new FestivalService(festivalRepository, mock(FestivalImageRepository.class),
                 mock(FestivalArtistRepository.class), mock(FestivalTicketRepository.class), mock(UserRepository.class),
                 mock(VenueRepository.class), mock(BookmarkRepository.class), mock(NotificationRepository.class),
-                mock(PostRepository.class), mock(ArtistMatchService.class), mock(KopisVenueService.class));
+                mock(PostRepository.class), mock(ArtistMatchService.class), mock(KopisVenueService.class), new ViewGuard());
         when(festivalRepository.findByFilters(any(), anyBoolean(), any(), any(), any(), any(), any(), any(), any(),
                 anyBoolean(), any())).thenReturn(new PageImpl<Festival>(List.of()));
     }
