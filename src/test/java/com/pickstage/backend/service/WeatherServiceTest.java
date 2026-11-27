@@ -303,4 +303,16 @@ class WeatherServiceTest {
         assertEquals(10, service.getSummary().tempMax());
         assertEquals(2, service.calls);
     }
+
+    // 실패 원인은 로그에 남기되, 인증키가 들어 있는 주소는 남기지 않는다
+    @org.junit.jupiter.api.Test
+    void rootCauseShowsNetworkReasonWithoutUrl() {
+        RuntimeException timeout = new RuntimeException("GET https://example/?serviceKey=SECRET",
+                new java.net.SocketTimeoutException("Connect timed out"));
+        RuntimeException other = new RuntimeException("serviceKey=SECRET", new IllegalArgumentException("serviceKey=SECRET"));
+
+        org.junit.jupiter.api.Assertions.assertEquals("SocketTimeoutException (Connect timed out)",
+                WeatherService.rootCause(timeout));
+        org.junit.jupiter.api.Assertions.assertEquals("IllegalArgumentException", WeatherService.rootCause(other));
+    }
 }

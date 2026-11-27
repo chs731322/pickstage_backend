@@ -129,14 +129,19 @@ public class WeatherService {
         try {
             return loadShortTerm(now);
         } catch (RuntimeException shortTermFailure) {
-            log.warn("단기예보를 가져오지 못해 중기예보로 대신합니다: {}", shortTermFailure.getClass().getSimpleName());
+            log.warn("단기예보를 가져오지 못해 중기예보로 대신합니다: {}", reason(shortTermFailure));
             try {
                 return loadMidTerm(now);
             } catch (RuntimeException midTermFailure) {
-                log.warn("중기예보도 가져오지 못했습니다: {}", midTermFailure.getClass().getSimpleName());
+                log.warn("중기예보도 가져오지 못했습니다: {}", reason(midTermFailure));
                 throw new ExternalServiceUnavailableException(UNAVAILABLE_MESSAGE);
             }
         }
+    }
+
+    // 로그에 남길 실패 원인. fetch 가 만든 문구만 그대로 쓰고, 그 밖의 예외는 메시지에 주소(인증키)가 섞일 수 있어 종류만 남긴다.
+    private static String reason(RuntimeException failure) {
+        return failure instanceof IllegalStateException ? failure.getMessage() : failure.getClass().getSimpleName();
     }
 
     private boolean serviceKeyMissing() {
@@ -291,8 +296,9 @@ public class WeatherService {
         try {
             String body = restClient.get().uri(URI.create(url)).retrieve().body(String.class);
             JsonNode root = objectMapper.readTree(body);
-            if (!"00".equals(root.path("response").path("header").path("resultCode").asString(""))) {
-                throw new IllegalStateException("기상청이 오류를 돌려줬어요.");
+            String resultCode = root.path("response").path("header").path("resultCode").asString("");
+            if (!"00".equals(resultCode)) {
+                throw new IllegalStateException("기상청이 오류를 돌려줬어요. (resultCode=" + resultCode + ")");
             }
             return root.path("response").path("body").path("items").path("item");
         } catch (RestClientResponseException e) {
@@ -301,8 +307,19 @@ public class WeatherService {
         } catch (IllegalStateException e) {
             throw e;
         } catch (RuntimeException e) {
-            throw new IllegalStateException("기상청 호출 실패: " + e.getClass().getSimpleName());
+            throw new IllegalStateException("기상청 호출 실패: " + e.getClass().getSimpleName() + " / " + rootCause(e));
         }
+    }
+
+    // 연결이 안 된 것인지(연결 시간 초과·거부), 응답이 늦은 것인지 구별할 수 있게 가장 안쪽 원인을 적는다.
+    // 연결 관련 예외의 메시지에는 주소가 들어가지 않는다. 다른 예외는 종류만 적는다.
+    static String rootCause(Throwable e) {
+        Throwable root = e;
+        while (root.getCause() != null && root.getCause() != root) {
+            root = root.getCause();
+        }
+        boolean network = root instanceof java.net.SocketTimeoutException || root instanceof java.net.ConnectException;
+        return root.getClass().getSimpleName() + (network ? " (" + root.getMessage() + ")" : "");
     }
 
     private static JsonNode items(JsonNode item) {
