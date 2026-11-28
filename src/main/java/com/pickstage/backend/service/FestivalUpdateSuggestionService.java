@@ -294,6 +294,7 @@ public class FestivalUpdateSuggestionService {
     }
 
     private void addTicket(Festival festival, FestivalUpdateSuggestion suggestion) {
+        FestivalTicketSummary.add(festival, suggestion.getOpenAt(), suggestion.getBookingUrl(), LocalDateTime.now());
         festivalTicketRepository.save(FestivalTicket.builder()
                 .festival(festival)
                 .label(suggestion.getLabel())

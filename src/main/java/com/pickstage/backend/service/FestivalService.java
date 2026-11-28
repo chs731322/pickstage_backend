@@ -551,5 +551,8 @@ public class FestivalService {
                                         .sortOrder(i)
                                         .build());
                 }
+                // 홈의 티켓 오픈 일정에 나오도록 공연의 대표 오픈 시각·예매 링크를 맞춘다
+                FestivalTicketSummary.apply(festival, tickets.stream().map(TicketRequest::getOpenAt).toList(),
+                                tickets.stream().map(TicketRequest::getBookingUrl).toList(), LocalDateTime.now());
         }
 }
