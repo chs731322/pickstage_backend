@@ -186,6 +186,35 @@ class FestivalUpdateSuggestionServiceTest {
     }
 
     @Test
+    void 자동_확인의_출연진은_등록된_아티스트만_제안한다() {
+        when(artists.find("등록된밴드")).thenReturn(Optional.of(Artist.builder().id(7L).name("등록된밴드").build()));
+
+        var result = service.addFromSource(festival(), List.of("등록된밴드", "멤버이름", "다른멤버"), List.of());
+
+        assertEquals(List.of("등록된밴드"), result.stream().map(FestivalUpdateSuggestion::getArtistName).toList());
+    }
+
+    @Test
+    void 이름을_조금_다르게_적은_티켓은_같은_것으로_본다() {
+        assertEquals(FestivalDiffService.labelKey("일반 양일권"), FestivalDiffService.labelKey("2일권"));
+        assertEquals(FestivalDiffService.labelKey("1일 입장권"), FestivalDiffService.labelKey("일일권"));
+        assertEquals(FestivalDiffService.labelKey("전석"), FestivalDiffService.labelKey("일반"));
+        org.junit.jupiter.api.Assertions.assertNotEquals(FestivalDiffService.labelKey("얼리버드 1일권"), FestivalDiffService.labelKey("1일권"));
+    }
+
+    @Test
+    void 승인할_때_같은_티켓이_이미_있으면_더하지_않고_승인만_한다() {
+        FestivalUpdateSuggestion s = pending(Type.TICKET);
+        when(tickets.findByFestivalIdOrderBySortOrderAsc(FESTIVAL)).thenReturn(List.of(
+                FestivalTicket.builder().vendorName("멜론티켓").label("일반 3일권").build()));
+
+        service.approve(ADMIN, 5L);
+
+        verify(tickets, never()).save(any());
+        assertEquals(Status.APPROVED, s.getStatus());
+    }
+
+    @Test
     void 목록은_공연_이름과_함께_보여준다() {
         when(suggestions.findByStatusOrderByCreatedAtDesc(Status.PENDING)).thenReturn(List.of(
                 FestivalUpdateSuggestion.builder().id(5L).festivalId(FESTIVAL).type(Type.LINEUP).status(Status.PENDING).artistName("새밴드").build()));

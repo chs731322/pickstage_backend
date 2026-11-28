@@ -67,4 +67,12 @@ class FestivalDraftLineupTest {
         assertEquals(List.of("아시안체어샷"), FestivalDraftService.splitLineupName("아시안체어샷 (@asianchairshot) \uD83C\uDD95"));
         assertEquals(List.of("이오욱(LOW)"), FestivalDraftService.splitLineupName("이오욱(LOW)"));
     }
+
+    @org.junit.jupiter.api.Test
+    void 괄호_안_멤버_목록은_출연자로_나누지_않는다() {
+        org.junit.jupiter.api.Assertions.assertEquals(java.util.List.of("국카스텐", "쏜애플"),
+                FestivalDraftService.splitLineupName("국카스텐(하현우, 전규호, 김기범), 쏜애플"));
+        org.junit.jupiter.api.Assertions.assertEquals(java.util.List.of("이날치(LEENALCHI)"),
+                FestivalDraftService.splitLineupName("이날치(LEENALCHI)"));
+    }
 }

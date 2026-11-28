@@ -102,8 +102,10 @@ public class FestivalUpdateSuggestionService {
     // 자동 확인(KOPIS)에서 찾은 것을 제안으로 저장한다.
     // 가격 이름은 출처마다 달라서("전석"과 "일반" 등), 티켓은 아직 없는 예매처의 것만 제안한다.
     public List<FestivalUpdateSuggestion> addFromSource(Festival festival, List<String> artistNames, List<TicketDraft> tickets) {
+        // KOPIS 출연진은 밴드를 멤버 개인 이름으로 주는 경우가 많아서, 이미 등록된 아티스트만 제안한다
         List<ArtistCandidate> candidates = artistNames.stream()
-                .map(name -> new ArtistCandidate(name, artistMatchService.find(name).map(Artist::getId).orElse(null)))
+                .flatMap(name -> artistMatchService.find(name).stream()
+                        .map(artist -> new ArtistCandidate(name, artist.getId())))
                 .toList();
 
         List<FestivalTicket> current = festivalTicketRepository.findByFestivalIdOrderBySortOrderAsc(festival.getId());
@@ -187,12 +189,19 @@ public class FestivalUpdateSuggestionService {
         requireAdmin(adminId);
         List<FestivalUpdateSuggestion> suggestions = suggestionRepository.findByStatusOrderByCreatedAtDesc(status);
 
-        Map<Long, String> titles = new HashMap<>();
+        Map<Long, Festival> festivals = new HashMap<>();
         festivalRepository
                 .findAllById(suggestions.stream().map(FestivalUpdateSuggestion::getFestivalId).distinct().toList())
-                .forEach(festival -> titles.put(festival.getId(), festival.getTitle()));
+                .forEach(festival -> festivals.put(festival.getId(), festival));
+        // 비교 화면의 묶음 제목에 쓰도록 공연 기간도 함께 보낸다
         return suggestions.stream()
-                .map(s -> FestivalUpdateSuggestionResponse.of(s, titles.get(s.getFestivalId())))
+                .map(s -> {
+                    Festival festival = festivals.get(s.getFestivalId());
+                    return FestivalUpdateSuggestionResponse.of(s, festival == null ? null : festival.getTitle()).toBuilder()
+                            .festivalStartDate(festival == null ? null : festival.getStartDate())
+                            .festivalEndDate(festival == null ? null : festival.getEndDate())
+                            .build();
+                })
                 .toList();
     }
 
@@ -294,6 +303,11 @@ public class FestivalUpdateSuggestionService {
     }
 
     private void addTicket(Festival festival, FestivalUpdateSuggestion suggestion) {
+        // 승인하는 사이에 직접 넣었을 수 있어서 한 번 더 확인한다 (같은 티켓이 있으면 더하지 않는다)
+        List<FestivalTicket> current = festivalTicketRepository.findByFestivalIdOrderBySortOrderAsc(festival.getId());
+        if (FestivalDiffService.hasSameTicket(current, suggestion.getVendorName(), suggestion.getLabel())) {
+            return;
+        }
         FestivalTicketSummary.add(festival, suggestion.getOpenAt(), suggestion.getBookingUrl(), LocalDateTime.now());
         festivalTicketRepository.save(FestivalTicket.builder()
                 .festival(festival)
@@ -302,7 +316,7 @@ public class FestivalUpdateSuggestionService {
                 .price(suggestion.getPrice())
                 .bookingUrl(suggestion.getBookingUrl())
                 .openAt(suggestion.getOpenAt())
-                .sortOrder(festivalTicketRepository.findByFestivalIdOrderBySortOrderAsc(festival.getId()).size())
+                .sortOrder(current.size())
                 .build());
     }
 

@@ -210,7 +210,8 @@ public class FestivalDraftService {
         sb.append("- region은 장소가 있는 시/도의 짧은 이름이야.\n");
         sb.append("- tickets는 예매처(vendorName)별·권종(label)별로 나눠. label은 '1일권', '2일권', 'R석'처럼 권종 이름이고 권종 구분이 없으면 '일반'이라고 써. price는 원 단위 숫자, openAt은 예매 오픈 일시(YYYY-MM-DDTHH:mm:ss).\n");
         sb.append("  예매처 페이지가 함께 주어지면 그 안의 권종·가격·예매 오픈(선예매/일반) 일정과 라인업을 tickets와 lineup에 반영하고, bookingUrl에는 그 페이지 주소를 써. 가격이 여러 개면 권종별로 따로 넣어.\n");
-        sb.append("- lineup은 실제 출연하는 아티스트만, 적힌 순서대로. 자료에 적힌 표기를 그대로 쓰고 번역하거나 한글로 음역하지 마(영문 이름은 영문 그대로). 한글 이름과 영문 이름이 같이 적혀 있을 때만 한글 이름을 써. SNS 아이디, 소속, 팀·스테이지 이름, TBA 같은 안내 문구는 빼.\n");
+        sb.append("- lineup은 실제 출연하는 아티스트만, 적힌 순서대로. 자료에 적힌 표기를 그대로 쓰고 번역하거나 한글로 음역하지 마(영문 이름은 영문 그대로). 한글 이름과 영문 이름이 같이 적혀 있을 때만 한글 이름을 써. SNS 아이디, 소속사, 스테이지(무대) 이름, TBA 같은 안내 문구는 빼.\n");
+        sb.append("  밴드·그룹은 팀 이름 하나만 넣고 멤버 개인 이름은 절대 넣지 마. 멤버가 '팀명(멤버, 멤버)'처럼 함께 적혀 있거나 '출연진'에 개인 이름이 나열돼 있어도, 그 사람들이 한 팀의 멤버면 팀 이름만 써.\n");
         sb.append("  lineup 배열의 항목 하나에는 아티스트 한 팀(한 명) 이름만 넣어. 쉼표·슬래시·줄바꿈·점으로 나열된 이름은 반드시 각각 별도 항목으로 나눠서 넣고, 나열된 문장 전체를 한 항목에 넣지 마.\n");
         sb.append("  '1차 라인업', '2차 라인업', '라인업', '출연진' 같은 제목·안내 문구는 아티스트 이름이 아니니까 빼.\n");
         sb.append("  날짜별 라인업이면 performanceDate에 그 날짜를, 모르면 null을 넣어.\n\n");
@@ -387,6 +388,8 @@ public class FestivalDraftService {
     private static final java.util.regex.Pattern LINEUP_LABEL = java.util.regex.Pattern.compile(
             "^\\s*(\\d+\\s*차\\s*)?(라인\\s*업|line\\s*-?\\s*up|출연\\s*진|출연\\s*아티스트|아티스트)\\s*[:：\\-–]?\\s*",
             java.util.regex.Pattern.CASE_INSENSITIVE);
+    private static final java.util.regex.Pattern LINEUP_MEMBER_LIST =
+            java.util.regex.Pattern.compile("(?<=\\S)\\s*[(（][^()（）]*[,，、/·][^()（）]*[)）]");
     private static final java.util.regex.Pattern LINEUP_SEPARATOR = java.util.regex.Pattern.compile("[,，、;；\\n\\r]+|\\s+/\\s+");
     // 타임테이블의 날짜 제목 줄("12/18 (금)", "DAY 1", "2026.12.19 SAT")은 아티스트 이름이 아니다
     private static final java.util.regex.Pattern LINEUP_DATE_HEADING = java.util.regex.Pattern.compile(
@@ -404,6 +407,8 @@ public class FestivalDraftService {
             return List.of();
         }
         String text = LINEUP_LABEL.matcher(raw.replace('\u00A0', ' ').trim()).replaceFirst("");
+        // "밴드(멤버, 멤버)"의 괄호 안 멤버 목록은 버린다 (쉼표로 나누면 멤버가 따로 출연자가 되므로)
+        text = LINEUP_MEMBER_LIST.matcher(text).replaceAll("");
         String[] parts = LINEUP_SEPARATOR.split(text);
         if (parts.length == 2 && !text.contains("\n") && !text.contains("/") && !containsHangul(text)) {
             parts = new String[] { text };

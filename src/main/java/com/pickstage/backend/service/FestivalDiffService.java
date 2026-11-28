@@ -29,7 +29,22 @@ public class FestivalDiffService {
 
     // 예매처와 권종 이름을 합쳐 "같은 티켓"인지 구별하는 열쇠를 만든다
     private static String ticketKey(String vendorName, String label) {
-        return vendorKey(vendorName) + "|" + ArtistMatchService.normalize(label);
+        return vendorKey(vendorName) + "|" + labelKey(label);
+    }
+
+    // 같은 티켓을 다르게 적어도 하나로 본다: "일반 양일권" = "2일권", "1일 입장권" = "일일권", "전석" = "일반"
+    static String labelKey(String label) {
+        return ArtistMatchService.normalize(label)
+                .replaceAll("[()\\[\\]·\\-_/]", "")
+                .replace("양일", "2일")
+                .replace("일일", "1일")
+                .replaceAll("일반|전석|티켓|입장|권", "");
+    }
+
+    // 이미 같은 티켓(예매처 + 이름)이 있는지
+    static boolean hasSameTicket(List<FestivalTicket> current, String vendorName, String label) {
+        String key = ticketKey(vendorName, label);
+        return current.stream().anyMatch(ticket -> ticketKey(ticket.getVendorName(), ticket.getLabel()).equals(key));
     }
 
     private static final Set<String> TICKET_VENDORS = Set.of("nol", "melon", "yes24", "naver", "ticketlink");

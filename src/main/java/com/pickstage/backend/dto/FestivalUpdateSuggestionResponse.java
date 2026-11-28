@@ -11,13 +11,15 @@ import lombok.Getter;
 
 // 관리자 화면에 보여주는 갱신 제안 1건
 @Getter
-@Builder
+@Builder(toBuilder = true)
 @AllArgsConstructor
 public class FestivalUpdateSuggestionResponse {
 
     private Long id;
     private Long festivalId;
     private String festivalTitle;
+    private LocalDate festivalStartDate;
+    private LocalDate festivalEndDate;
     private String type;
     private String status;
 
