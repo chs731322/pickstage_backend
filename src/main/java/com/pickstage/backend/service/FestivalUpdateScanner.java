@@ -59,6 +59,7 @@ public class FestivalUpdateScanner {
     private final EmailService emailService;
     private final ReportNotifier reportNotifier;
     private final PushService pushService;
+    private final WebPushService webPushService;
     private final String frontendUrl;
     private final Executor executor;
     private final long pauseMillis;
@@ -73,17 +74,17 @@ public class FestivalUpdateScanner {
     @Autowired
     public FestivalUpdateScanner(FestivalRepository festivalRepository, UserRepository userRepository,
             KopisPerformanceService kopis, FestivalUpdateSuggestionService suggestionService, EmailService emailService,
-            ReportNotifier reportNotifier, PushService pushService, TicketPageService ticketPageService,
+            ReportNotifier reportNotifier, PushService pushService, WebPushService webPushService, TicketPageService ticketPageService,
             FestivalDraftService draftService, @Value("${APP_MELON_SCAN_ENABLED:false}") boolean melonEnabled,
             @Value("${app.frontend-url:http://localhost:5173}") String frontendUrl) {
-        this(festivalRepository, userRepository, kopis, suggestionService, emailService, reportNotifier, pushService,
+        this(festivalRepository, userRepository, kopis, suggestionService, emailService, reportNotifier, pushService, webPushService,
                 ticketPageService, draftService, melonEnabled, frontendUrl, ForkJoinPool.commonPool(), 200);
     }
 
     // 테스트에서 바로 실행하고 쉬지 않도록 바꿀 때 쓴다
     FestivalUpdateScanner(FestivalRepository festivalRepository, UserRepository userRepository,
             KopisPerformanceService kopis, FestivalUpdateSuggestionService suggestionService, EmailService emailService,
-            ReportNotifier reportNotifier, PushService pushService, TicketPageService ticketPageService,
+            ReportNotifier reportNotifier, PushService pushService, WebPushService webPushService, TicketPageService ticketPageService,
             FestivalDraftService draftService, boolean melonEnabled, String frontendUrl, Executor executor,
             long pauseMillis) {
         this.ticketPageService = ticketPageService;
@@ -96,6 +97,7 @@ public class FestivalUpdateScanner {
         this.emailService = emailService;
         this.reportNotifier = reportNotifier;
         this.pushService = pushService;
+        this.webPushService = webPushService;
         this.frontendUrl = frontendUrl;
         this.executor = executor;
         this.pauseMillis = pauseMillis;
@@ -248,6 +250,12 @@ public class FestivalUpdateScanner {
             } catch (Exception e) {
                 log.warn("제안 알림 메일 발송 실패: {}", e.getClass().getSimpleName());
             }
+        }
+        List<Long> adminIds = userRepository.findByRoleAndDeletedAtIsNull(User.Role.admin).stream().map(User::getId).toList();
+        try {
+            webPushService.send(adminIds, "새 공연 정보 제안 " + lines.size() + "건", "관리자 > 정보 갱신에서 확인해주세요.", "/admin");
+        } catch (Exception e) {
+            log.warn("제안 알림 웹 푸시 발송 실패: {}", e.getClass().getSimpleName());
         }
         try {
             pushService.sendToUsers(

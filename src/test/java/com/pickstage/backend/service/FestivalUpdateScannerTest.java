@@ -36,6 +36,7 @@ class FestivalUpdateScannerTest {
     private EmailService email;
     private ReportNotifier notifier;
     private PushService push;
+    private WebPushService webPush;
     private TicketPageService pages;
     private FestivalDraftService drafts;
     private FestivalUpdateScanner scanner;
@@ -49,6 +50,7 @@ class FestivalUpdateScannerTest {
         email = mock(EmailService.class);
         notifier = mock(ReportNotifier.class);
         push = mock(PushService.class);
+        webPush = mock(WebPushService.class);
         pages = mock(TicketPageService.class);
         drafts = mock(FestivalDraftService.class);
         scanner = scanner(false);
@@ -67,7 +69,7 @@ class FestivalUpdateScannerTest {
     }
 
     private FestivalUpdateScanner scanner(boolean melonEnabled) {
-        return new FestivalUpdateScanner(festivals, users, kopis, suggestions, email, notifier, push, pages, drafts,
+        return new FestivalUpdateScanner(festivals, users, kopis, suggestions, email, notifier, push, webPush, pages, drafts,
                 melonEnabled, "https://site", Runnable::run, 0);
     }
 
@@ -118,6 +120,7 @@ class FestivalUpdateScannerTest {
         assertEquals(false, status.running());
         verify(email).sendAdminNotice(eq("admin@example.com"), contains("1건"), contains("새밴드"));
         verify(push).sendToUsers(eq(List.of(1L)), contains("1건"), anyString(), any());
+        verify(webPush).send(eq(List.of(1L)), contains("1건"), anyString(), eq("/admin"));
     }
 
     @Test
