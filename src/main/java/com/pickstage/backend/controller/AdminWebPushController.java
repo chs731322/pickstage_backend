@@ -30,7 +30,8 @@ public class AdminWebPushController {
 
     @GetMapping("/key")
     public ResponseEntity<ApiResponse<String>> publicKey(@AuthenticationPrincipal Long userId) {
-        return ResponseEntity.ok(ApiResponse.success(webPushService.publicKey(userId)));
+        // 두 번째 인자를 꼭 넘긴다: success(글자) 하나만 넘기면 data 가 아니라 message 에 담긴다
+        return ResponseEntity.ok(ApiResponse.success(webPushService.publicKey(userId), null));
     }
 
     @PostMapping("/subscribe")
